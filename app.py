@@ -1,47 +1,51 @@
 import streamlit as st
+import os
 
 
-st.set_page_config(
-
-    page_title="AI Data Analyzer",
-
-    page_icon="📊",
-
-    layout="wide"
-
+image_path = os.path.join(
+    "assets",
+    "data_ai.png"
 )
 
 
-
-st.title(
-"📊 AI Data Analyzer"
-)
+st.write("Checking image path:")
+st.write(image_path)
 
 
-st.write(
 
-"""
-
-Upload your Excel/CSV file and get:
-
-✅ AI Insights
-
-✅ Automatic Charts
-
-✅ Business Recommendations
+if os.path.isfile(image_path):
 
 
-Go to the Data Analyzer page from sidebar.
-
-"""
-
-)
+    try:
 
 
-st.image(
+        st.image(
 
-"assets/data_ai.png",
+            image_path,
 
-use_container_width=True
+            caption="AI Data Analyzer",
 
-)
+            use_container_width=True
+
+        )
+
+
+    except Exception as e:
+
+
+        st.error(
+
+            f"Image loading failed: {e}"
+
+        )
+
+
+else:
+
+
+    st.error(
+
+        "Image file not found"
+
+    )
+
