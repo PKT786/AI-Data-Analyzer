@@ -3,8 +3,8 @@ import os
 
 
 image_path = os.path.join(
-    "asset",
-    "data_ai.jpg"
+    "assets",
+    "data_ai.png"
 )
 
 
