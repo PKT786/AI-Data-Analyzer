@@ -1,11 +1,17 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import os
 
 
 from utils.data_analyzer import analyze_data
 
+from utils.chart_generator import generate_chart
 
+
+
+# -----------------------------
+# Page Config
+# -----------------------------
 
 st.set_page_config(
 
@@ -20,6 +26,80 @@ st.set_page_config(
 
 
 # -----------------------------
+# CSS Styling
+# -----------------------------
+
+st.markdown(
+
+"""
+
+<style>
+
+
+.hero-title{
+
+font-size:45px;
+
+font-weight:800;
+
+color:#111827;
+
+}
+
+
+.hero-text{
+
+font-size:20px;
+
+color:#4b5563;
+
+}
+
+
+
+.card{
+
+
+padding:25px;
+
+border-radius:15px;
+
+background:#f8fafc;
+
+border:1px solid #e5e7eb;
+
+}
+
+
+
+.metric-card{
+
+
+padding:20px;
+
+border-radius:15px;
+
+background:#ffffff;
+
+box-shadow:0px 4px 15px rgba(0,0,0,0.08);
+
+
+}
+
+
+</style>
+
+""",
+
+unsafe_allow_html=True
+
+)
+
+
+
+
+
+# -----------------------------
 # Hero Section
 # -----------------------------
 
@@ -27,43 +107,200 @@ st.set_page_config(
 col1,col2 = st.columns([1,1])
 
 
+
 with col1:
 
 
-    st.title(
-        "📊 AI Data Analyzer"
-    )
-
-
-    st.write(
-
-    """
-    Analyze and visualize your data automatically using AI.
-
-    Upload Excel/CSV files and get:
-
-    ✔ Business Insights
-
-    ✔ Charts
-
-    ✔ Data Summary
-
-    ✔ Recommendations
+    st.markdown(
 
     """
 
+    <div class="hero-title">
+
+    📊 AI Data Analyzer
+
+    </div>
+
+    """,
+
+    unsafe_allow_html=True
+
     )
+
+
+    st.markdown(
+
+    """
+
+    <div class="hero-text">
+
+
+    Turn your Excel & CSV files into powerful business insights using Artificial Intelligence.
+
+
+    <br><br>
+
+
+    ✔ Automatic Data Analysis
+
+    <br>
+
+    ✔ AI Generated Insights
+
+    <br>
+
+    ✔ Interactive Charts
+
+    <br>
+
+    ✔ Business Recommendations
+
+
+    </div>
+
+
+    """,
+
+    unsafe_allow_html=True
+
+    )
+
 
 
 
 with col2:
 
 
-    st.image(
+    image="assets/data_ai.png"
 
-        "assets/data_ai.png",
 
-        use_container_width=True
+    if os.path.exists(image):
+
+
+        st.image(
+
+            image,
+
+            use_container_width=True
+
+        )
+
+
+
+
+
+st.divider()
+
+
+
+# -----------------------------
+# Feature Cards
+# -----------------------------
+
+
+st.subheader(
+
+"🚀 What AI Analyzer Can Do"
+
+)
+
+
+
+c1,c2,c3,c4 = st.columns(4)
+
+
+
+with c1:
+
+    st.markdown(
+
+    """
+
+    <div class="card">
+
+    📂
+
+    <h4>Upload Data</h4>
+
+    Excel & CSV support
+
+    </div>
+
+    """,
+
+    unsafe_allow_html=True
+
+    )
+
+
+
+with c2:
+
+    st.markdown(
+
+    """
+
+    <div class="card">
+
+    🤖
+
+    <h4>AI Analysis</h4>
+
+    Smart insights
+
+    </div>
+
+    """,
+
+    unsafe_allow_html=True
+
+    )
+
+
+
+with c3:
+
+    st.markdown(
+
+    """
+
+    <div class="card">
+
+    📈
+
+    <h4>Charts</h4>
+
+    Auto visualization
+
+    </div>
+
+    """,
+
+    unsafe_allow_html=True
+
+    )
+
+
+
+with c4:
+
+    st.markdown(
+
+    """
+
+    <div class="card">
+
+    💡
+
+    <h4>Recommendations</h4>
+
+    Business decisions
+
+    </div>
+
+    """,
+
+    unsafe_allow_html=True
 
     )
 
@@ -74,70 +311,125 @@ st.divider()
 
 
 # -----------------------------
-# Upload Data
+# Upload Section
 # -----------------------------
 
 
 st.header(
 
-"📂 Upload Your Data"
+"📂 Upload Your Dataset"
 
 )
 
 
 
-file = st.file_uploader(
+uploaded_file = st.file_uploader(
 
-    "Upload CSV or Excel",
+"Choose Excel or CSV file",
 
-    type=[
+type=[
 
-        "csv",
+"csv",
 
-        "xlsx"
+"xlsx"
 
-    ]
+]
 
 )
 
 
 
-if file:
+
+if uploaded_file:
 
 
 
-    if file.name.endswith(".csv"):
+    if uploaded_file.name.endswith(".csv"):
 
 
-        df = pd.read_csv(file)
-
+        df=pd.read_csv(uploaded_file)
 
 
     else:
 
 
-        df = pd.read_excel(file)
+        df=pd.read_excel(uploaded_file)
 
 
 
     st.success(
 
-        "Data uploaded successfully"
+    "Dataset uploaded successfully"
 
     )
 
 
 
+    # Dataset Metrics
+
+
+    a,b,c = st.columns(3)
+
+
+
+    with a:
+
+
+        st.metric(
+
+        "Rows",
+
+        df.shape[0]
+
+        )
+
+
+    with b:
+
+
+        st.metric(
+
+        "Columns",
+
+        df.shape[1]
+
+        )
+
+
+
+    with c:
+
+
+        st.metric(
+
+        "Missing Values",
+
+        df.isnull().sum().sum()
+
+        )
+
+
+
+
+    st.divider()
+
+
+
+    # Preview
+
+
     st.subheader(
 
-        "Preview Data"
+    "👀 Data Preview"
 
     )
 
 
     st.dataframe(
 
-        df.head()
+        df.head(10),
+
+        use_container_width=True
 
     )
 
@@ -147,12 +439,23 @@ if file:
 
 
 
+    # AI Question
+
+
+    st.subheader(
+
+    "🤖 Ask AI About Your Data"
+
+    )
+
+
     question = st.text_input(
 
-        "Ask AI about your data",
+        "Example: Find top selling products",
 
         placeholder=
-        "Example: Find top selling products"
+
+        "Ask anything about your dataset..."
 
     )
 
@@ -160,80 +463,117 @@ if file:
 
     if st.button(
 
-        "🤖 Analyze Data"
+        "✨ Analyze with AI"
 
     ):
 
 
 
-        with st.spinner(
+        if question:
+
+
+
+            with st.spinner(
 
             "AI analyzing your data..."
 
-        ):
+            ):
+
+
+                result = analyze_data(
+
+                    df,
+
+                    question
+
+                )
 
 
 
-            result = analyze_data(
+            st.session_state["result"]=result
 
-                df,
 
-                question
+
+        else:
+
+
+            st.warning(
+
+            "Please enter your question"
 
             )
 
 
 
-        st.subheader(
 
-            "💡 AI Insights"
+# -----------------------------
+# Result Dashboard
+# -----------------------------
+
+
+if "result" in st.session_state:
+
+
+
+    result=st.session_state["result"]
+
+
+
+    st.divider()
+
+
+
+    st.header(
+
+    "📊 AI Analysis Dashboard"
+
+    )
+
+
+
+    st.markdown(
+
+    "### 💡 Insights"
+
+    )
+
+
+    st.info(
+
+        result["insight"]
+
+    )
+
+
+
+    st.markdown(
+
+    "### 📈 Visualization"
+
+    )
+
+
+
+    fig = generate_chart(
+
+        df,
+
+        result["chart"]
+
+    )
+
+
+
+    if fig:
+
+
+        st.plotly_chart(
+
+            fig,
+
+            use_container_width=True
 
         )
-
-
-        st.write(
-
-            result["insight"]
-
-        )
-
-
-
-        st.divider()
-
-
-
-        # Auto Chart
-
-
-        if result["chart"]:
-
-
-            chart=result["chart"]
-
-
-
-            fig=px.bar(
-
-                df,
-
-                x=chart["x"],
-
-                y=chart["y"],
-
-                title=chart["title"]
-
-            )
-
-
-
-            st.plotly_chart(
-
-                fig,
-
-                use_container_width=True
-
-            )
 
 
 
@@ -242,6 +582,18 @@ else:
 
     st.info(
 
-    "Upload your dataset to start analysis"
+    """
+
+Upload your dataset and ask AI:
+
+Example:
+
+"Analyze sales performance"
+
+"Find trends"
+
+"Identify problems"
+
+"""
 
     )
