@@ -669,11 +669,8 @@ else:
 
 # =====================================================
 # PUNIT AI DATA ANALYZER V5
-# PART 2 PREMIUM
-# CHART STUDIO + DASHBOARD
-# =====================================================
-# =====================================================
-# PREMIUM CHART BUILDER
+# PART 2 FINAL
+# PREMIUM CHART ENGINE + DASHBOARD
 # =====================================================
 
 
@@ -682,51 +679,88 @@ import random
 
 
 
+# =====================================================
+# SESSION STORAGE
+# =====================================================
+
+
 if "charts" not in st.session_state:
-    st.session_state.charts=[]
+
+    st.session_state.charts = []
+
+
+
+if "current_chart" not in st.session_state:
+
+    st.session_state.current_chart = None
 
 
 
 
-if "df" in st.session_state and st.session_state.df is not None:
 
 
-    df=st.session_state.df
+# =====================================================
+# CHECK DATA
+# =====================================================
+
+
+if st.session_state.df is not None:
+
+
+    df = st.session_state.df
 
 
 
     st.divider()
 
-    st.subheader("📊 AI Chart Studio")
+
+    st.subheader(
+        "📊 AI Chart Builder"
+    )
 
 
 
-    # remove useless columns
 
 
-    ignore=[]
+    # =================================================
+    # SMART COLUMN DETECTION
+    # =================================================
 
 
-    for c in df.columns:
+    usable_columns=[]
 
 
-        if "id" in c.lower():
-
-            ignore.append(c)
+    for col in df.columns:
 
 
-
-    usable_cols=[
-
-        c for c in df.columns
-
-        if c not in ignore
-
-    ]
+        name=col.lower()
 
 
+        if (
 
-    numeric_cols=df[usable_cols].select_dtypes(
+            "id" in name
+
+            or
+
+            "code" in name
+
+            or
+
+            "number" in name
+
+        ):
+
+
+            continue
+
+
+
+        usable_columns.append(col)
+
+
+
+
+    numeric_columns = df[usable_columns].select_dtypes(
 
         include="number"
 
@@ -734,7 +768,7 @@ if "df" in st.session_state and st.session_state.df is not None:
 
 
 
-    text_cols=df[usable_cols].select_dtypes(
+    category_columns = df[usable_columns].select_dtypes(
 
         exclude="number"
 
@@ -743,16 +777,40 @@ if "df" in st.session_state and st.session_state.df is not None:
 
 
 
-    c1,c2,c3=st.columns(3)
+
+    if len(numeric_columns)==0:
+
+
+        st.warning(
+
+        "No numeric measure found for charts"
+
+        )
+
+
+        st.stop()
 
 
 
-    with c1:
 
 
-        chart_type=st.selectbox(
 
-        "Select Chart",
+    # =================================================
+    # USER OPTIONS
+    # =================================================
+
+
+
+    col1,col2,col3 = st.columns(3)
+
+
+
+    with col1:
+
+
+        chart_type = st.selectbox(
+
+        "Choose Chart",
 
         [
 
@@ -772,48 +830,54 @@ if "df" in st.session_state and st.session_state.df is not None:
 
 
 
-    with c2:
 
 
-        x_col=st.selectbox(
+    with col2:
+
+
+        x_axis = st.selectbox(
 
         "Category",
 
-        usable_cols
+        category_columns
+
+        if category_columns
+
+        else usable_columns
 
         )
 
 
 
-    with c3:
 
 
-        if numeric_cols:
 
-            y_col=st.selectbox(
+    with col3:
 
-            "Measure",
 
-            numeric_cols
+        y_axis = st.selectbox(
 
-            )
+        "Measure",
 
-        else:
+        numeric_columns
 
-            y_col=None
+        )
 
 
 
 
-    # aggregation
 
 
-    if y_col:
+
+    # =================================================
+    # DATA AGGREGATION
+    # =================================================
 
 
-        chart_df=(
 
-        df.groupby(x_col)[y_col]
+    chart_data = (
+
+        df.groupby(x_axis)[y_axis]
 
         .sum()
 
@@ -821,36 +885,46 @@ if "df" in st.session_state and st.session_state.df is not None:
 
         .sort_values(
 
-        y_col,
+            y_axis,
 
-        ascending=False
-
-        )
-
-        .head(20)
+            ascending=False
 
         )
 
+        .head(15)
 
-
-    else:
-
-
-        chart_df=df.head(20)
+    )
 
 
 
 
 
-    create,add=st.columns(2)
+    st.info(
+
+    "AI automatically summarizes top 15 categories for better visualization"
+
+    )
 
 
 
 
-    with create:
 
 
-        create_chart=st.button(
+
+    # =================================================
+    # BUTTONS
+    # =================================================
+
+
+    c1,c2 = st.columns(2)
+
+
+
+
+    with c1:
+
+
+        create_chart = st.button(
 
         "🎨 Create Chart",
 
@@ -861,11 +935,10 @@ if "df" in st.session_state and st.session_state.df is not None:
 
 
 
+    with c2:
 
-    with add:
 
-
-        add_dashboard=st.button(
+        add_dashboard = st.button(
 
         "➕ Add To Dashboard",
 
@@ -878,6 +951,12 @@ if "df" in st.session_state and st.session_state.df is not None:
 
 
 
+    # =================================================
+    # CREATE CHART
+    # =================================================
+
+
+
     if create_chart:
 
 
@@ -885,21 +964,23 @@ if "df" in st.session_state and st.session_state.df is not None:
         if chart_type=="Bar Chart":
 
 
-            fig=px.bar(
 
-            chart_df,
+            fig = px.bar(
 
-            x=x_col,
+            chart_data,
 
-            y=y_col,
+            x=x_axis,
+
+            y=y_axis,
 
             text_auto=True,
 
-            color=y_col,
+            color=y_axis,
 
-            title=f"{y_col} by {x_col}"
+            title=f"{y_axis} by {x_axis}"
 
             )
+
 
 
 
@@ -907,19 +988,22 @@ if "df" in st.session_state and st.session_state.df is not None:
         elif chart_type=="Line Chart":
 
 
-            fig=px.line(
 
-            chart_df,
+            fig = px.line(
 
-            x=x_col,
+            chart_data,
 
-            y=y_col,
+            x=x_axis,
+
+            y=y_axis,
 
             markers=True,
 
-            title=f"{y_col} Trend"
+            title=f"{y_axis} Trend"
 
             )
+
+
 
 
 
@@ -927,13 +1011,14 @@ if "df" in st.session_state and st.session_state.df is not None:
         elif chart_type=="Area Chart":
 
 
-            fig=px.area(
 
-            chart_df,
+            fig = px.area(
 
-            x=x_col,
+            chart_data,
 
-            y=y_col,
+            x=x_axis,
+
+            y=y_axis,
 
             title="Growth Analysis"
 
@@ -942,20 +1027,28 @@ if "df" in st.session_state and st.session_state.df is not None:
 
 
 
+
+
+
         elif chart_type=="Pie Chart":
 
 
-            fig=px.pie(
 
-            chart_df,
+            fig = px.pie(
 
-            names=x_col,
+            chart_data,
 
-            values=y_col,
+            names=x_axis,
 
-            title="Contribution"
+            values=y_axis,
+
+            title="Contribution Analysis"
 
             )
+
+
+
+
 
 
 
@@ -963,17 +1056,18 @@ if "df" in st.session_state and st.session_state.df is not None:
         else:
 
 
-            fig=px.scatter(
 
-            chart_df,
+            fig = px.scatter(
 
-            x=x_col,
+            chart_data,
 
-            y=y_col,
+            x=x_axis,
 
-            size=y_col,
+            y=y_axis,
 
-            title="Relationship"
+            size=y_axis,
+
+            title="Relationship Analysis"
 
             )
 
@@ -981,19 +1075,42 @@ if "df" in st.session_state and st.session_state.df is not None:
 
 
 
+
+
+        # PROFESSIONAL STYLE
+
+
         fig.update_layout(
 
-        template="plotly_white",
+            template="plotly_white",
 
-        height=450,
+            height=450,
 
-        title_font_size=22
+            title_font=dict(
+
+            size=24
+
+            ),
+
+            margin=dict(
+
+            l=40,
+
+            r=40,
+
+            t=80,
+
+            b=40
+
+            )
 
         )
 
 
 
-        st.session_state.current_chart=fig
+
+        st.session_state.current_chart = fig
+
 
 
 
@@ -1012,10 +1129,18 @@ if "df" in st.session_state and st.session_state.df is not None:
 
 
 
+
+    # =================================================
+    # ADD DASHBOARD
+    # =================================================
+
+
     if add_dashboard:
 
 
-        if "current_chart" in st.session_state:
+
+        if st.session_state.current_chart is not None:
+
 
 
             st.session_state.charts.append(
@@ -1025,20 +1150,25 @@ if "df" in st.session_state and st.session_state.df is not None:
             )
 
 
+
             st.success(
 
             "Chart added to dashboard 🚀"
 
             )
 
+
+
         else:
+
 
 
             st.warning(
 
-            "Create chart first"
+            "First create a chart"
 
             )
+
 
 
 
@@ -1046,7 +1176,7 @@ if "df" in st.session_state and st.session_state.df is not None:
 
 
 # =====================================================
-# DASHBOARD
+# PREMIUM DASHBOARD
 # =====================================================
 
 
@@ -1058,28 +1188,45 @@ if len(st.session_state.charts)>0:
     st.divider()
 
 
+
     st.subheader(
 
-    "🚀 Punit AI Analytics Dashboard"
+    "🚀 Punit AI Dashboard"
 
     )
 
 
 
-    colors=[
 
-    "#0f172a",
 
-    "#1e293b",
+
+    dashboard_colors=[
+
+
+    "#020617",
+
+    "#172554",
 
     "#312e81",
 
-    "#064e3b"
+    "#064e3b",
+
+    "#3f1d2e"
+
 
     ]
 
 
-    bg=random.choice(colors)
+
+    selected_bg=random.choice(
+
+    dashboard_colors
+
+    )
+
+
+
+
 
 
 
@@ -1087,27 +1234,37 @@ if len(st.session_state.charts)>0:
 
     f"""
 
-    <div style='
+<div style="
 
-    background:{bg};
+background:{selected_bg};
 
-    padding:30px;
+padding:35px;
 
-    border-radius:25px;
+border-radius:30px;
 
-    '>
+margin-bottom:25px;
 
-
-    <h1 style='color:white'>
-
-    📊 Business Dashboard
-
-    </h1>
+">
 
 
-    </div>
+<h1 style="color:white">
 
-    """,
+📊 Business Intelligence Dashboard
+
+</h1>
+
+
+<p style="color:white">
+
+Created by Punit AI Data Analyzer
+
+</p>
+
+
+</div>
+
+
+""",
 
     unsafe_allow_html=True
 
@@ -1116,14 +1273,89 @@ if len(st.session_state.charts)>0:
 
 
 
-    for i in range(0,len(st.session_state.charts),2):
-
-
-        col1,col2=st.columns(2)
 
 
 
-        with col1:
+
+    # KPI AREA
+
+
+
+    a,b,c,d = st.columns(4)
+
+
+
+    a.metric(
+
+    "Rows",
+
+    df.shape[0]
+
+    )
+
+
+    b.metric(
+
+    "Columns",
+
+    df.shape[1]
+
+    )
+
+
+    c.metric(
+
+    "Charts",
+
+    len(st.session_state.charts)
+
+    )
+
+
+    d.metric(
+
+    "Status",
+
+    "Ready"
+
+    )
+
+
+
+
+
+
+
+    st.write("")
+
+
+
+
+
+    # CHART GRID
+
+
+
+    for i in range(
+
+        0,
+
+        len(st.session_state.charts),
+
+        2
+
+    ):
+
+
+
+        left,right = st.columns(2)
+
+
+
+
+
+        with left:
+
 
 
             st.plotly_chart(
@@ -1132,16 +1364,20 @@ if len(st.session_state.charts)>0:
 
             use_container_width=True,
 
-            key=f"chart_{i}"
+            key=f"dashboard_left_{i}"
 
             )
+
+
 
 
 
         if i+1 < len(st.session_state.charts):
 
 
-            with col2:
+
+            with right:
+
 
 
                 st.plotly_chart(
@@ -1150,6 +1386,16 @@ if len(st.session_state.charts)>0:
 
                 use_container_width=True,
 
-                key=f"chart_{i+1}"
+                key=f"dashboard_right_{i}"
 
                 )
+
+
+
+
+
+
+
+# =====================================================
+# END PART 2
+# =====================================================
