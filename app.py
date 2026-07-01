@@ -247,7 +247,6 @@ type=[
 
 if uploaded_file:
 
-
     if uploaded_file.name.endswith(".csv"):
 
         st.session_state.df = pd.read_csv(uploaded_file)
@@ -257,15 +256,24 @@ if uploaded_file:
         st.session_state.df = pd.read_excel(uploaded_file)
 
 
+    df = st.session_state.df
 
-df = st.session_state.df
 
     st.success(
-    "Dataset Loaded Successfully 🚀"
+        "Dataset uploaded successfully 🚀"
     )
 
 
+    st.write(
+        "Rows:",
+        df.shape[0]
+    )
 
+
+    st.write(
+        "Columns:",
+        df.shape[1]
+    )
 
     # =================================================
     # DATA SUMMARY
