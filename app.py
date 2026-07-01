@@ -1,544 +1,616 @@
 import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.express as px
+from groq import Groq
 import os
+from datetime import datetime
 
 
 
-# -----------------------------
-# Page Configuration
-# -----------------------------
+# ============================
+# PAGE CONFIG
+# ============================
 
 st.set_page_config(
-
-    page_title="AI Data Analyzer",
-
+    page_title="Punit AI Data Analyzer",
     page_icon="📊",
-
     layout="wide"
-
 )
 
 
 
-# -----------------------------
-# Custom CSS
-# -----------------------------
+# ============================
+# GROQ
+# ============================
+
+client = Groq(
+    api_key=st.secrets["GROQ_API_KEY"]
+)
+
+
+
+# ============================
+# BRANDING
+# ============================
+
+
+if os.path.exists("assets/punit_logo.png"):
+
+    st.image(
+        "assets/punit_logo.png",
+        width=180
+    )
+
+
+st.title(
+    "📊 Punit AI Data Analyzer"
+)
+
 
 st.markdown(
-
 """
-
-<style>
-
-
-.hero-title{
-
-font-size:55px;
-
-font-weight:900;
-
-line-height:1.1;
-
-color:#111827;
-
-}
+### Transform your Excel & CSV files into insights 🚀
 
 
-.hero-subtitle{
+Upload data → Clean → Analyze → Visualize → Generate AI Insights
 
-font-size:22px;
 
-color:#4b5563;
-
-}
+Powered by **Punit Tech Hub**
+"""
+)
 
 
 
-.feature-card{
-
-
-padding:25px;
-
-border-radius:18px;
-
-background:#ffffff;
-
-border:1px solid #e5e7eb;
-
-box-shadow:0px 8px 25px rgba(0,0,0,0.08);
-
-height:170px;
-
-
-}
+st.divider()
 
 
 
-.section-title{
 
-font-size:32px;
-
-font-weight:800;
-
-text-align:center;
-
-}
+# ============================
+# FILE UPLOAD
+# ============================
 
 
+uploaded_file = st.file_uploader(
 
-.cta{
+    "Upload Excel or CSV file",
 
-
-padding:35px;
-
-border-radius:20px;
-
-background:#f1f5f9;
-
-text-align:center;
-
-}
-
-
-</style>
-
-
-""",
-
-unsafe_allow_html=True
+    type=[
+        "csv",
+        "xlsx"
+    ]
 
 )
 
 
 
-# -----------------------------
-# Hero Section
-# -----------------------------
-
-
-left,right = st.columns(
-
-[1,1]
-
-)
+if uploaded_file:
 
 
 
-with left:
+    # -------------------------
+    # READ FILE
+    # -------------------------
 
 
-    st.markdown(
+    if uploaded_file.name.endswith(".csv"):
 
-    """
+        df = pd.read_csv(uploaded_file)
 
-    <div class="hero-title">
 
-    📊 AI Data Analyzer
+    else:
 
-    </div>
+        df = pd.read_excel(uploaded_file)
 
-    """,
 
-    unsafe_allow_html=True
 
+    st.success(
+        "File uploaded successfully"
     )
 
 
 
-    st.markdown(
-
-    """
-
-    <div class="hero-subtitle">
+    original_df=df.copy()
 
 
-    Transform your Excel & CSV data into meaningful insights using Artificial Intelligence.
+
+    # ============================
+    # DATA OVERVIEW
+    # ============================
 
 
-    <br><br>
+    st.subheader(
+        "📌 Dataset Overview"
+    )
 
 
-    Analyze trends, discover patterns and generate business recommendations automatically.
+    c1,c2,c3,c4 = st.columns(4)
 
 
-    </div>
+
+    c1.metric(
+        "Rows",
+        df.shape[0]
+    )
 
 
-    """,
+    c2.metric(
+        "Columns",
+        df.shape[1]
+    )
 
-    unsafe_allow_html=True
 
+    c3.metric(
+        "Duplicates",
+        df.duplicated().sum()
+    )
+
+
+    c4.metric(
+        "Missing Values",
+        df.isna().sum().sum()
     )
 
 
 
-    st.write("")
+
+
+    # ============================
+    # DATA CLEANING
+    # ============================
+
+
+    st.divider()
+
+
+    st.subheader(
+        "🧹 Data Cleaning"
+    )
+
 
 
     if st.button(
-
-        "🚀 Start Analyzing Data"
-
+        "Clean Data"
     ):
 
 
-        st.switch_page(
 
-            "pages/1_Data_Analyzer.py"
+        df=df.drop_duplicates()
 
+
+
+        for col in df.columns:
+
+
+            if df[col].isna().sum()>0:
+
+
+                if df[col].dtype=="object":
+
+                    df[col]=df[col].fillna(
+                        "Unknown"
+                    )
+
+                else:
+
+                    df[col]=df[col].fillna(
+                        df[col].median()
+                    )
+
+
+
+        st.session_state.cleaned=df
+
+
+
+        st.success(
+            "Data cleaned successfully"
         )
 
 
 
-with right:
 
 
-    image_path = "assets/data_ai.png"
+    if "cleaned" in st.session_state:
+
+
+        df=st.session_state.cleaned
 
 
 
-    if os.path.exists(image_path):
-
-
-        st.image(
-
-            image_path,
-
-            use_container_width=True
-
+        st.dataframe(
+            df.head(10)
         )
 
 
 
-st.divider()
 
 
 
-# -----------------------------
-# Feature Section
-# -----------------------------
+    # ============================
+    # DATA TYPES
+    # ============================
 
 
-st.markdown(
+    st.divider()
+
+
+    st.subheader(
+        "🔍 Column Information"
+    )
+
+
+    info=pd.DataFrame(
+
+    {
+
+    "Column":df.columns,
+
+    "Data Type":
+    df.dtypes.astype(str),
+
+    "Missing":
+    df.isna().sum()
+
+    }
+
+    )
+
+
+    st.dataframe(info)
+
+
+
+
+
+
+    # ============================
+    # AI INSIGHTS
+    # ============================
+
+
+    st.divider()
+
+
+    st.subheader(
+        "🤖 AI Data Insights"
+    )
+
+
+
+    if st.button(
+        "Generate AI Insights"
+    ):
+
+
+
+        summary = df.describe(
+            include="all"
+        ).to_string()
+
+
+
+        prompt=f"""
+
+You are a senior data analyst.
+
+
+Analyze this dataset:
+
+{summary}
+
+
+Provide:
+
+1. Important patterns
+
+2. Business insights
+
+3. Recommendations
+
+
+Keep it simple.
+
 
 """
 
-<div class="section-title">
 
-Why Use AI Data Analyzer?
 
-</div>
+        response=client.chat.completions.create(
 
 
-""",
+            model=
+            "llama-3.1-8b-instant",
 
-unsafe_allow_html=True
 
-)
+            messages=[
 
+            {
 
-st.write("")
+            "role":"user",
 
+            "content":prompt
 
+            }
 
-c1,c2,c3 = st.columns(3)
+            ]
 
-
-
-with c1:
-
-
-    st.markdown(
-
-    """
-
-    <div class="feature-card">
-
-
-    <h2>🤖 AI Insights</h2>
-
-
-    Understand your data with natural language questions.
-
-
-    </div>
-
-
-    """,
-
-    unsafe_allow_html=True
-
-    )
-
-
-
-
-with c2:
-
-
-    st.markdown(
-
-    """
-
-    <div class="feature-card">
-
-
-    <h2>📈 Smart Charts</h2>
-
-
-    Automatically generate meaningful visualizations.
-
-
-    </div>
-
-
-    """,
-
-    unsafe_allow_html=True
-
-    )
-
-
-
-
-with c3:
-
-
-    st.markdown(
-
-    """
-
-    <div class="feature-card">
-
-
-    <h2>💡 Business Decisions</h2>
-
-
-    Convert raw data into actionable recommendations.
-
-
-    </div>
-
-
-    """,
-
-    unsafe_allow_html=True
-
-    )
-
-
-
-
-st.divider()
-
-
-
-# -----------------------------
-# How it works
-# -----------------------------
-
-
-st.markdown(
-
-"""
-
-<div class="section-title">
-
-How It Works
-
-</div>
-
-""",
-
-unsafe_allow_html=True
-
-)
-
-
-a,b,c,d = st.columns(4)
-
-
-
-steps=[
-
-("1️⃣","Upload","Upload Excel/CSV"),
-
-("2️⃣","Ask","Ask questions"),
-
-("3️⃣","Analyze","AI finds insights"),
-
-("4️⃣","Decide","Take action")
-
-]
-
-
-
-for col,step in zip(
-
-[a,b,c,d],
-
-steps
-
-):
-
-
-    with col:
+        )
 
 
         st.info(
 
-        f"""
-
-{step[0]}
-
-### {step[1]}
-
-
-{step[2]}
-
-"""
+            response.choices[0].message.content
 
         )
 
 
 
+
+
+
+
+    # ============================
+    # CHART BUILDER
+    # ============================
+
+
+    st.divider()
+
+
+    st.subheader(
+        "📈 Interactive Chart Builder"
+    )
+
+
+
+    chart_type = st.selectbox(
+
+        "Select Chart Type",
+
+        [
+
+        "Bar Chart",
+
+        "Line Chart",
+
+        "Pie Chart",
+
+        "Scatter Plot",
+
+        "Histogram",
+
+        "Box Plot"
+
+        ]
+
+    )
+
+
+
+
+    columns=list(df.columns)
+
+
+
+    x_axis=st.selectbox(
+
+        "Select X Axis",
+
+        columns
+
+    )
+
+
+
+    y_axis=None
+
+
+
+    if chart_type not in [
+
+        "Pie Chart",
+
+        "Histogram"
+
+    ]:
+
+
+        y_axis=st.selectbox(
+
+            "Select Y Axis",
+
+            columns
+
+        )
+
+
+
+
+
+
+    if st.button(
+        "Create Chart"
+    ):
+
+
+        try:
+
+
+
+            if chart_type=="Bar Chart":
+
+
+                fig=px.bar(
+
+                    df,
+
+                    x=x_axis,
+
+                    y=y_axis
+
+                )
+
+
+
+            elif chart_type=="Line Chart":
+
+
+                fig=px.line(
+
+                    df,
+
+                    x=x_axis,
+
+                    y=y_axis
+
+                )
+
+
+
+            elif chart_type=="Pie Chart":
+
+
+                fig=px.pie(
+
+                    df,
+
+                    names=x_axis
+
+                )
+
+
+
+            elif chart_type=="Scatter Plot":
+
+
+                fig=px.scatter(
+
+                    df,
+
+                    x=x_axis,
+
+                    y=y_axis
+
+                )
+
+
+
+            elif chart_type=="Histogram":
+
+
+                fig=px.histogram(
+
+                    df,
+
+                    x=x_axis
+
+                )
+
+
+
+            else:
+
+
+                fig=px.box(
+
+                    df,
+
+                    x=x_axis,
+
+                    y=y_axis
+
+                )
+
+
+
+            st.plotly_chart(
+
+                fig,
+
+                use_container_width=True
+
+            )
+
+
+
+        except Exception as e:
+
+
+            st.error(
+                str(e)
+            )
+
+
+
+
+
+
+
+    # ============================
+    # DOWNLOAD
+    # ============================
+
+
+    st.divider()
+
+
+    st.subheader(
+        "⬇️ Download"
+    )
+
+
+
+    csv=df.to_csv(
+        index=False
+    ).encode()
+
+
+
+    st.download_button(
+
+        "Download Cleaned CSV",
+
+        csv,
+
+        "cleaned_data.csv",
+
+        "text/csv"
+
+    )
+
+
+
+else:
+
+
+    st.info(
+
+    """
+Upload a file to start analysis.
+
+Supported:
+
+✔ Excel
+
+✔ CSV
+
+"""
+    )
+
+
+
+# ============================
+# FOOTER
+# ============================
+
+
 st.divider()
-
-
-
-# -----------------------------
-# Use Cases
-# -----------------------------
-
-
-st.markdown(
-
-"""
-
-<div class="section-title">
-
-Built For
-
-</div>
-
-
-""",
-
-unsafe_allow_html=True
-
-)
-
-
-
-x,y,z = st.columns(3)
-
-
-
-with x:
-
-
-    st.success(
-
-    """
-
-📊 Business Analysts
-
-
-Sales & KPI analysis
-
-"""
-
-    )
-
-
-
-with y:
-
-
-    st.success(
-
-    """
-
-📁 Excel Users
-
-
-Automated reporting
-
-"""
-
-    )
-
-
-
-with z:
-
-
-    st.success(
-
-    """
-
-🚀 Companies
-
-
-Data-driven decisions
-
-"""
-
-    )
-
-
-
-st.divider()
-
-
-
-# -----------------------------
-# CTA
-# -----------------------------
-
-
-st.markdown(
-
-"""
-
-<div class="cta">
-
-
-<h2>Ready to unlock your data?</h2>
-
-
-Upload your dataset and let AI discover insights.
-
-
-</div>
-
-""",
-
-unsafe_allow_html=True
-
-)
-
-
-
-st.write("")
-
-
-if st.button(
-
-"✨ Analyze Your First Dataset"
-
-):
-
-
-    st.switch_page(
-
-        "pages/1_Data_Analyzer.py"
-
-    )
-
 
 
 st.caption(
 
-"AI Data Analyzer | Built with Streamlit + OpenAI + Python"
+"🚀 Punit Tech Hub | AI Data Analytics Platform"
 
 )
