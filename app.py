@@ -260,12 +260,6 @@ if uploaded_file:
 
 df = st.session_state.df
 
-
-
-    st.session_state["original"]=df
-
-
-
     st.success(
     "Dataset Loaded Successfully 🚀"
     )
