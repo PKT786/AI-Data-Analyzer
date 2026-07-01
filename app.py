@@ -666,3 +666,670 @@ else:
 # =====================================================
 # END PART 1
 # =====================================================
+
+# =====================================================
+# PUNIT AI DATA ANALYZER V5
+# PART 2
+# CHART STUDIO + DASHBOARD BUILDER
+# =====================================================
+
+
+import plotly.express as px
+import random
+
+
+
+
+# =====================================================
+# CHECK DATA
+# =====================================================
+
+
+if st.session_state.df is not None:
+
+
+    df = st.session_state.df
+
+
+
+    st.divider()
+
+
+
+    # =================================================
+    # CHART STUDIO
+    # =================================================
+
+
+    st.subheader(
+
+    "📊 Chart Studio"
+
+    )
+
+
+
+    numeric_columns = df.select_dtypes(
+
+        include=["number"]
+
+    ).columns.tolist()
+
+
+
+    all_columns = df.columns.tolist()
+
+
+
+
+
+    chart_type = st.selectbox(
+
+    "Choose Chart Type",
+
+    [
+
+    "📊 Bar Chart",
+
+    "📈 Line Chart",
+
+    "🥧 Pie Chart",
+
+    "🌊 Area Chart",
+
+    "🔵 Scatter Chart",
+
+    "🔥 Heatmap"
+
+    ]
+
+    )
+
+
+
+
+
+    col1,col2 = st.columns(2)
+
+
+
+    with col1:
+
+
+        x_column = st.selectbox(
+
+        "Select X Axis",
+
+        all_columns
+
+        )
+
+
+
+    with col2:
+
+
+        if len(numeric_columns)>0:
+
+
+            y_column = st.selectbox(
+
+            "Select Y Axis",
+
+            numeric_columns
+
+            )
+
+        else:
+
+
+            y_column = st.selectbox(
+
+            "Select Y Axis",
+
+            all_columns
+
+            )
+
+
+
+
+
+    if st.button(
+
+    "🚀 Create Chart"
+
+    ):
+
+
+
+        try:
+
+
+
+            if chart_type=="📊 Bar Chart":
+
+
+
+                fig = px.bar(
+
+                df,
+
+                x=x_column,
+
+                y=y_column,
+
+                template="plotly_dark",
+
+                title=f"{y_column} Analysis"
+
+                )
+
+
+
+
+
+            elif chart_type=="📈 Line Chart":
+
+
+
+                fig = px.line(
+
+                df,
+
+                x=x_column,
+
+                y=y_column,
+
+                template="plotly_dark",
+
+                title=f"{y_column} Trend"
+
+                )
+
+
+
+
+
+            elif chart_type=="🥧 Pie Chart":
+
+
+
+                fig = px.pie(
+
+                df,
+
+                names=x_column,
+
+                values=y_column,
+
+                template="plotly_dark"
+
+                )
+
+
+
+
+
+            elif chart_type=="🌊 Area Chart":
+
+
+
+                fig = px.area(
+
+                df,
+
+                x=x_column,
+
+                y=y_column,
+
+                template="plotly_dark"
+
+                )
+
+
+
+
+
+            elif chart_type=="🔵 Scatter Chart":
+
+
+
+                fig = px.scatter(
+
+                df,
+
+                x=x_column,
+
+                y=y_column,
+
+                template="plotly_dark"
+
+                )
+
+
+
+
+
+            else:
+
+
+
+                corr=df.select_dtypes(
+
+                include="number"
+
+                ).corr()
+
+
+
+                fig=px.imshow(
+
+                corr,
+
+                text_auto=True,
+
+                template="plotly_dark"
+
+                )
+
+
+
+
+
+            st.session_state.charts.append(fig)
+
+
+
+            st.success(
+
+            "Chart added to dashboard ✅"
+
+            )
+
+
+
+            st.plotly_chart(
+
+            fig,
+
+            use_container_width=True,
+
+            key=f"created_chart_{len(st.session_state.charts)}"
+
+            )
+
+
+
+
+
+        except Exception as e:
+
+
+
+            st.error(
+
+            f"Chart error: {e}"
+
+            )
+
+
+
+
+
+
+
+    # =================================================
+    # DASHBOARD BUILDER
+    # =================================================
+
+
+
+    st.divider()
+
+
+
+    st.subheader(
+
+    "🎨 AI Dashboard Builder"
+
+    )
+
+
+
+
+
+    themes=[
+
+
+
+    {
+
+    "name":"Bloomberg Dark",
+
+    "color":"#050505"
+
+    },
+
+
+
+    {
+
+    "name":"Fabric Blue",
+
+    "color":"#0f172a"
+
+    },
+
+
+
+    {
+
+    "name":"Purple AI",
+
+    "color":"#3b0764"
+
+    },
+
+
+
+    {
+
+    "name":"Ocean Analytics",
+
+    "color":"#082f49"
+
+    }
+
+
+
+    ]
+
+
+
+
+
+    if st.button(
+
+    "✨ Generate Dashboard"
+
+    ):
+
+
+
+        selected_theme=random.choice(
+
+        themes
+
+        )
+
+
+
+        st.session_state.dashboard_theme = selected_theme
+
+
+
+        st.success(
+
+        f"Dashboard Theme: {selected_theme['name']}"
+
+        )
+
+
+
+
+
+
+
+    # =================================================
+    # DISPLAY DASHBOARD
+    # =================================================
+
+
+
+    if len(st.session_state.charts)>0:
+
+
+
+        theme = st.session_state.get(
+
+        "dashboard_theme",
+
+        {
+
+        "color":"#0f172a",
+
+        "name":"Default"
+
+        }
+
+        )
+
+
+
+
+
+        st.markdown(
+
+        f"""
+
+<div style="
+
+background:{theme['color']};
+
+padding:30px;
+
+border-radius:25px;
+
+
+">
+
+
+<h1 style="color:white">
+
+Punit AI Dashboard 🚀
+
+</h1>
+
+
+
+<p style="color:white">
+
+Interactive Business Analytics Dashboard
+
+</p>
+
+
+
+</div>
+
+
+""",
+
+        unsafe_allow_html=True
+
+        )
+
+
+
+
+
+        st.write("")
+
+
+
+
+
+        for index,chart in enumerate(
+
+            st.session_state.charts
+
+        ):
+
+
+
+            st.plotly_chart(
+
+            chart,
+
+            use_container_width=True,
+
+            key=f"dashboard_chart_{index}"
+
+            )
+
+
+
+
+
+
+
+    # =================================================
+    # AUTO DASHBOARD
+    # =================================================
+
+
+    st.divider()
+
+
+
+    st.subheader(
+
+    "🤖 Auto Dashboard Generator"
+
+    )
+
+
+
+
+
+    if st.button(
+
+    "Generate Automatic Dashboard 🚀"
+
+    ):
+
+
+
+        numeric=numeric_columns
+
+
+
+        if len(numeric)>0:
+
+
+
+            auto_charts=[]
+
+
+
+
+
+            auto_charts.append(
+
+            px.line(
+
+            df,
+
+            y=numeric[0],
+
+            title="Performance Trend",
+
+            template="plotly_dark"
+
+            )
+
+            )
+
+
+
+
+
+            auto_charts.append(
+
+            px.bar(
+
+            df,
+
+            x=df.columns[0],
+
+            y=numeric[0],
+
+            title="Category Performance",
+
+            template="plotly_dark"
+
+            )
+
+            )
+
+
+
+
+
+            auto_charts.append(
+
+            px.histogram(
+
+            df,
+
+            x=numeric[0],
+
+            title="Data Distribution",
+
+            template="plotly_dark"
+
+            )
+
+            )
+
+
+
+
+
+            st.session_state.charts = auto_charts
+
+
+
+
+
+            st.success(
+
+            "AI Dashboard Created Successfully 🚀"
+
+            )
+
+
+
+            for i,c in enumerate(auto_charts):
+
+
+                st.plotly_chart(
+
+                c,
+
+                use_container_width=True,
+
+                key=f"auto_dashboard_{i}"
+
+                )
+
+
+
+        else:
+
+
+
+            st.warning(
+
+            "No numeric columns found"
+
+            )
+
+
+
+
+
+# =====================================================
+# END PART 2
+# =====================================================
