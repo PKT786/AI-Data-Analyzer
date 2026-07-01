@@ -3,175 +3,331 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 from groq import Groq
-import os
 from datetime import datetime
+import os
+from io import BytesIO
+
+from reportlab.platypus import SimpleDocTemplate, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
 
 
 
-# ============================
+# ===============================
 # PAGE CONFIG
-# ============================
+# ===============================
 
 st.set_page_config(
+
     page_title="Punit AI Data Analyzer",
+
     page_icon="📊",
+
     layout="wide"
+
 )
 
 
 
-# ============================
+# ===============================
+# CUSTOM CSS
+# ===============================
+
+
+st.markdown("""
+
+<style>
+
+
+.main{
+
+background:#0e1117;
+
+}
+
+
+.card{
+
+background:#1c1f26;
+
+padding:20px;
+
+border-radius:15px;
+
+border:1px solid #333;
+
+}
+
+
+
+h1{
+
+color:white;
+
+}
+
+
+</style>
+
+
+""",
+unsafe_allow_html=True)
+
+
+
+
+# ===============================
 # GROQ
-# ============================
+# ===============================
+
 
 client = Groq(
-    api_key=st.secrets["GROQ_API_KEY"]
+
+api_key=st.secrets["GROQ_API_KEY"]
+
 )
 
 
 
-# ============================
-# BRANDING
-# ============================
+
+# ===============================
+# LOGO
+# ===============================
 
 
-if os.path.exists("assets/punit_logo.png"):
+if os.path.exists(
+"assets/punit_logo.png"
+):
 
     st.image(
+
         "assets/punit_logo.png",
-        width=180
+
+        width=220
+
     )
 
 
+
 st.title(
-    "📊 Punit AI Data Analyzer"
+"📊 Punit AI Data Analyzer"
 )
 
 
-st.markdown(
-"""
-### Transform your Excel & CSV files into insights 🚀
+st.caption(
 
-
-Upload data → Clean → Analyze → Visualize → Generate AI Insights
-
-
-Powered by **Punit Tech Hub**
-"""
-)
-
-
-
-st.divider()
-
-
-
-
-# ============================
-# FILE UPLOAD
-# ============================
-
-
-uploaded_file = st.file_uploader(
-
-    "Upload Excel or CSV file",
-
-    type=[
-        "csv",
-        "xlsx"
-    ]
+"Transform your Excel & CSV files into AI powered business insights"
 
 )
 
 
 
-if uploaded_file:
+# ===============================
+# SIDEBAR
+# ===============================
+
+
+with st.sidebar:
+
+
+    st.header(
+    "🚀 Punit AI Analytics"
+    )
+
+
+    st.write(
+
+    """
+    
+    Features:
+
+    📂 Upload Data
+
+    🧹 Cleaning
+
+    📊 Charts
+
+    🤖 AI Insights
+
+    📄 Reports
+
+    """
+
+    )
+
+
+    st.divider()
+
+
+    st.markdown(
+
+    """
+
+    Learn More:
+
+
+    📊 Excel Tutorials
+
+    🤖 AI Resources
+
+    💻 Mainframe Guides
+
+
+    """
+
+    )
 
 
 
-    # -------------------------
-    # READ FILE
-    # -------------------------
 
 
-    if uploaded_file.name.endswith(".csv"):
+# ===============================
+# UPLOAD
+# ===============================
 
-        df = pd.read_csv(uploaded_file)
+
+file = st.file_uploader(
+
+"Upload Excel / CSV",
+
+type=[
+"csv",
+"xlsx"
+]
+
+)
+
+
+
+if file:
+
+
+
+    if file.name.endswith(".csv"):
+
+
+        df=pd.read_csv(file)
 
 
     else:
 
-        df = pd.read_excel(uploaded_file)
+
+        df=pd.read_excel(file)
+
+
+
+    original=df.copy()
 
 
 
     st.success(
-        "File uploaded successfully"
+    "Dataset Loaded Successfully"
     )
 
 
 
-    original_df=df.copy()
-
-
-
-    # ============================
-    # DATA OVERVIEW
-    # ============================
+    # ===============================
+    # KPI CARDS
+    # ===============================
 
 
     st.subheader(
-        "📌 Dataset Overview"
+    "📌 Dataset Overview"
     )
 
 
-    c1,c2,c3,c4 = st.columns(4)
+    c1,c2,c3,c4=st.columns(4)
 
 
 
     c1.metric(
-        "Rows",
-        df.shape[0]
+
+    "Rows",
+
+    df.shape[0]
+
     )
 
 
     c2.metric(
-        "Columns",
-        df.shape[1]
+
+    "Columns",
+
+    df.shape[1]
+
     )
 
 
     c3.metric(
-        "Duplicates",
-        df.duplicated().sum()
+
+    "Duplicates",
+
+    df.duplicated().sum()
+
     )
 
 
     c4.metric(
-        "Missing Values",
-        df.isna().sum().sum()
+
+    "Missing",
+
+    int(df.isna().sum().sum())
+
+    )
+
+
+
+    # ===============================
+    # HEALTH SCORE
+    # ===============================
+
+
+    score=100
+
+
+    score-=df.isna().sum().sum()*0.2
+
+
+    score-=df.duplicated().sum()*0.1
+
+
+    score=max(
+    0,
+    int(score)
+    )
+
+
+
+    st.info(
+
+    f"""
+
+    Dataset Health Score:
+
+    ## {score}/100
+
+    """
+
     )
 
 
 
 
-
-    # ============================
-    # DATA CLEANING
-    # ============================
+    # ===============================
+    # CLEAN DATA
+    # ===============================
 
 
     st.divider()
 
 
     st.subheader(
-        "🧹 Data Cleaning"
+    "🧹 Data Cleaning"
     )
 
 
 
     if st.button(
-        "Clean Data"
+    "Clean Dataset"
     ):
 
 
@@ -183,19 +339,19 @@ if uploaded_file:
         for col in df.columns:
 
 
-            if df[col].isna().sum()>0:
+            if df[col].isnull().sum()>0:
 
 
                 if df[col].dtype=="object":
 
                     df[col]=df[col].fillna(
-                        "Unknown"
+                    "Unknown"
                     )
 
                 else:
 
                     df[col]=df[col].fillna(
-                        df[col].median()
+                    df[col].median()
                     )
 
 
@@ -205,380 +361,417 @@ if uploaded_file:
 
 
         st.success(
-            "Data cleaned successfully"
+        "Cleaning Completed"
         )
-
 
 
 
 
     if "cleaned" in st.session_state:
 
-
         df=st.session_state.cleaned
 
 
 
-        st.dataframe(
-            df.head(10)
-        )
-
-
-
-
-
-
-    # ============================
-    # DATA TYPES
-    # ============================
-
-
-    st.divider()
-
-
-    st.subheader(
-        "🔍 Column Information"
+    st.dataframe(
+    df.head()
     )
 
 
-    info=pd.DataFrame(
-
-    {
-
-    "Column":df.columns,
-
-    "Data Type":
-    df.dtypes.astype(str),
-
-    "Missing":
-    df.isna().sum()
-
-    }
-
-    )
 
 
-    st.dataframe(info)
-
-
-
-
-
-
-    # ============================
+    # ===============================
     # AI INSIGHTS
-    # ============================
+    # ===============================
 
 
     st.divider()
 
 
     st.subheader(
-        "🤖 AI Data Insights"
+    "🤖 AI Business Insights"
     )
 
 
 
     if st.button(
-        "Generate AI Insights"
+    "Generate Insights"
     ):
 
 
 
-        summary = df.describe(
-            include="all"
+        summary=df.describe(
+        include="all"
         ).to_string()
 
 
 
         prompt=f"""
 
-You are a senior data analyst.
+
+Act as senior data analyst.
 
 
-Analyze this dataset:
+Analyze:
 
 {summary}
 
 
-Provide:
+Give:
 
-1. Important patterns
+- Key findings
 
-2. Business insights
+- Trends
 
-3. Recommendations
-
-
-Keep it simple.
+- Recommendations
 
 
 """
 
 
-
         response=client.chat.completions.create(
 
 
-            model=
-            "llama-3.1-8b-instant",
+        model="llama-3.1-8b-instant",
 
 
-            messages=[
+        messages=[
 
-            {
+        {
 
-            "role":"user",
+        "role":"user",
 
-            "content":prompt
+        "content":prompt
 
-            }
+        }
 
-            ]
+        ]
 
-        )
-
-
-        st.info(
-
-            response.choices[0].message.content
 
         )
 
 
 
+        st.success(
+
+        response.choices[0].message.content
+
+        )
 
 
 
 
-    # ============================
-    # CHART BUILDER
-    # ============================
+
+    # ===============================
+    # ASK YOUR DATA
+    # ===============================
 
 
     st.divider()
 
 
     st.subheader(
-        "📈 Interactive Chart Builder"
+    "💬 Ask Your Data"
+    )
+
+
+    question=st.text_input(
+
+    "Example: Which product has highest sales?"
+
     )
 
 
 
-    chart_type = st.selectbox(
+    if question:
 
-        "Select Chart Type",
 
-        [
 
-        "Bar Chart",
+        prompt=f"""
 
-        "Line Chart",
+Dataset:
 
-        "Pie Chart",
+{df.head(20).to_string()}
 
-        "Scatter Plot",
 
-        "Histogram",
+Question:
 
-        "Box Plot"
+{question}
+
+
+Answer clearly.
+
+"""
+
+
+
+        result=client.chat.completions.create(
+
+
+        model="llama-3.1-8b-instant",
+
+
+        messages=[
+
+        {
+
+        "role":"user",
+
+        "content":prompt
+
+        }
 
         ]
 
-    )
-
-
-
-
-    columns=list(df.columns)
-
-
-
-    x_axis=st.selectbox(
-
-        "Select X Axis",
-
-        columns
-
-    )
-
-
-
-    y_axis=None
-
-
-
-    if chart_type not in [
-
-        "Pie Chart",
-
-        "Histogram"
-
-    ]:
-
-
-        y_axis=st.selectbox(
-
-            "Select Y Axis",
-
-            columns
 
         )
 
 
 
+        st.write(
+
+        result.choices[0].message.content
+
+        )
+
+
+
+
+
+    # ===============================
+    # CHART BUILDER
+    # ===============================
+
+
+    st.divider()
+
+
+    st.subheader(
+    "📊 Visualization Studio"
+    )
+
+
+
+    chart=st.selectbox(
+
+    "Choose Chart",
+
+    [
+
+    "Bar",
+
+    "Line",
+
+    "Pie",
+
+    "Scatter",
+
+    "Histogram",
+
+    "Box"
+
+    ]
+
+    )
+
+
+
+    col1,col2=st.columns(2)
+
+
+    x=col1.selectbox(
+
+    "X Axis",
+
+    df.columns
+
+    )
+
+
+    y=col2.selectbox(
+
+    "Y Axis",
+
+    df.columns
+
+    )
 
 
 
     if st.button(
-        "Create Chart"
+    "Create Chart"
     ):
 
 
-        try:
+
+        if chart=="Bar":
+
+            fig=px.bar(
+            df,
+            x=x,
+            y=y
+            )
 
 
+        elif chart=="Line":
 
-            if chart_type=="Bar Chart":
-
-
-                fig=px.bar(
-
-                    df,
-
-                    x=x_axis,
-
-                    y=y_axis
-
-                )
+            fig=px.line(
+            df,
+            x=x,
+            y=y
+            )
 
 
+        elif chart=="Pie":
 
-            elif chart_type=="Line Chart":
-
-
-                fig=px.line(
-
-                    df,
-
-                    x=x_axis,
-
-                    y=y_axis
-
-                )
+            fig=px.pie(
+            df,
+            names=x
+            )
 
 
+        elif chart=="Scatter":
 
-            elif chart_type=="Pie Chart":
-
-
-                fig=px.pie(
-
-                    df,
-
-                    names=x_axis
-
-                )
+            fig=px.scatter(
+            df,
+            x=x,
+            y=y
+            )
 
 
+        elif chart=="Histogram":
 
-            elif chart_type=="Scatter Plot":
-
-
-                fig=px.scatter(
-
-                    df,
-
-                    x=x_axis,
-
-                    y=y_axis
-
-                )
+            fig=px.histogram(
+            df,
+            x=x
+            )
 
 
+        else:
 
-            elif chart_type=="Histogram":
-
-
-                fig=px.histogram(
-
-                    df,
-
-                    x=x_axis
-
-                )
-
-
-
-            else:
-
-
-                fig=px.box(
-
-                    df,
-
-                    x=x_axis,
-
-                    y=y_axis
-
-                )
-
-
-
-            st.plotly_chart(
-
-                fig,
-
-                use_container_width=True
-
+            fig=px.box(
+            df,
+            x=x,
+            y=y
             )
 
 
 
-        except Exception as e:
+        st.plotly_chart(
 
+        fig,
 
-            st.error(
-                str(e)
-            )
+        use_container_width=True
 
-
-
-
+        )
 
 
 
-    # ============================
-    # DOWNLOAD
-    # ============================
+
+
+    # ===============================
+    # DOWNLOAD EXCEL
+    # ===============================
 
 
     st.divider()
 
 
-    st.subheader(
-        "⬇️ Download"
-    )
+    output=BytesIO()
 
 
 
-    csv=df.to_csv(
+    with pd.ExcelWriter(
+    output,
+    engine="xlsxwriter"
+    ):
+
+        df.to_excel(
+        output,
         index=False
-    ).encode()
+        )
 
 
 
     st.download_button(
 
-        "Download Cleaned CSV",
+    "⬇ Download Excel Report",
 
-        csv,
+    output.getvalue(),
 
-        "cleaned_data.csv",
-
-        "text/csv"
+    "Punit_AI_Report.xlsx"
 
     )
+
+
+
+
+
+    # ===============================
+    # PDF REPORT
+    # ===============================
+
+
+    st.subheader(
+    "📄 PDF Report"
+    )
+
+
+    pdf=BytesIO()
+
+
+
+    doc=SimpleDocTemplate(pdf)
+
+
+
+    styles=getSampleStyleSheet()
+
+
+    story=[]
+
+
+    story.append(
+
+    Paragraph(
+
+    "Punit AI Data Analysis Report",
+
+    styles["Heading1"]
+
+    )
+
+    )
+
+
+
+    story.append(
+
+    Paragraph(
+
+    str(df.describe()),
+
+    styles["Normal"]
+
+    )
+
+    )
+
+
+    doc.build(story)
+
+
+
+    st.download_button(
+
+    "Download PDF",
+
+    pdf.getvalue(),
+
+    "Punit_AI_Report.pdf"
+
+    )
+
 
 
 
@@ -587,23 +780,10 @@ else:
 
     st.info(
 
-    """
-Upload a file to start analysis.
+    "Upload a file to start AI analysis 🚀"
 
-Supported:
-
-✔ Excel
-
-✔ CSV
-
-"""
     )
 
-
-
-# ============================
-# FOOTER
-# ============================
 
 
 st.divider()
@@ -611,6 +791,6 @@ st.divider()
 
 st.caption(
 
-"🚀 Punit Tech Hub | AI Data Analytics Platform"
+"© Punit Tech Hub | AI Analytics Platform"
 
 )
