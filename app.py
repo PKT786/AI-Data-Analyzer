@@ -913,7 +913,13 @@ Punit AI Dashboard 🚀
 # AUTO DASHBOARD GENERATOR
 # =====================================================
 
+for index, chart in enumerate(charts):
 
+    st.plotly_chart(
+        chart,
+        use_container_width=True,
+        key=f"dashboard_chart_{index}"
+    )
 st.divider()
 
 
