@@ -9,7 +9,8 @@ from groq import Groq
 from reportlab.platypus import SimpleDocTemplate, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
 
-
+if "df" not in st.session_state:
+    st.session_state.df = None
 # =====================================================
 # PAGE CONFIG
 # =====================================================
@@ -249,14 +250,15 @@ if uploaded_file:
 
     if uploaded_file.name.endswith(".csv"):
 
-
-        df=pd.read_csv(uploaded_file)
-
+        st.session_state.df = pd.read_csv(uploaded_file)
 
     else:
 
+        st.session_state.df = pd.read_excel(uploaded_file)
 
-        df=pd.read_excel(uploaded_file)
+
+
+df = st.session_state.df
 
 
 
@@ -456,7 +458,8 @@ unsafe_allow_html=True
 
 
 
-        st.session_state["clean"]=clean
+        st.session_state.clean = clean
+        st.session_state.df = clean
 
 
 
@@ -493,7 +496,18 @@ unsafe_allow_html=True
 # =====================================================
 # CHART STUDIO
 # =====================================================
+# Safety check
 
+if st.session_state.df is None:
+
+    st.warning(
+    "Please upload a dataset first"
+    )
+
+    st.stop()
+
+
+df = st.session_state.df
 
 st.divider()
 
@@ -506,7 +520,11 @@ st.subheader(
 
 if "clean" in st.session_state:
 
-    df=st.session_state["clean"]
+    df = st.session_state.clean
+
+else:
+
+    df = st.session_state.df
 
 
 
