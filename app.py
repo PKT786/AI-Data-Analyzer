@@ -1,6 +1,7 @@
 # =====================================================
 # PUNIT AI DATA ANALYZER V5
-# PART 1 - UI + UPLOAD + DATA CLEANING
+# PART 1
+# UI + UPLOAD + CLEANING ENGINE
 # =====================================================
 
 
@@ -8,15 +9,12 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import os
-import random
-from datetime import datetime
 
 
 
 # =====================================================
 # PAGE CONFIG
 # =====================================================
-
 
 st.set_page_config(
 
@@ -31,7 +29,7 @@ st.set_page_config(
 
 
 # =====================================================
-# SESSION STORAGE
+# SESSION STATE
 # =====================================================
 
 
@@ -55,7 +53,7 @@ if "charts" not in st.session_state:
 
 
 # =====================================================
-# CUSTOM CSS
+# PREMIUM CSS
 # =====================================================
 
 
@@ -68,21 +66,46 @@ st.markdown(
 
 .main-title{
 
-font-size:48px;
+font-size:45px;
 
 font-weight:800;
-
-color:#1E293B;
 
 }
 
 
 
-.subtitle{
+.sub-title{
 
 font-size:20px;
 
-color:#475569;
+color:#64748b;
+
+}
+
+
+
+.hero{
+
+
+background:
+
+linear-gradient(
+
+135deg,
+
+#0f172a,
+
+#2563eb
+
+);
+
+
+padding:35px;
+
+border-radius:25px;
+
+color:white;
+
 
 }
 
@@ -95,24 +118,12 @@ background:white;
 
 padding:25px;
 
-border-radius:20px;
+border-radius:18px;
 
-box-shadow:0px 5px 25px rgba(0,0,0,0.08);
+box-shadow:
 
-}
+0px 5px 25px rgba(0,0,0,0.12);
 
-
-
-.metric-card{
-
-
-background:#F8FAFC;
-
-padding:20px;
-
-border-radius:15px;
-
-text-align:center;
 
 }
 
@@ -131,10 +142,10 @@ unsafe_allow_html=True
 
 
 
+
 # =====================================================
 # HEADER
 # =====================================================
-
 
 
 col1,col2 = st.columns([1,5])
@@ -157,9 +168,12 @@ with col1:
 
         )
 
+
     else:
 
         st.write("📊")
+
+
 
 
 
@@ -177,9 +191,9 @@ with col2:
     </div>
 
 
-    <div class="subtitle">
+    <div class="sub-title">
 
-    Transform raw data into insights, charts and dashboards using AI
+    AI powered Excel & CSV analytics platform
 
     </div>
 
@@ -205,98 +219,43 @@ st.divider()
 # =====================================================
 
 
-hero1,hero2 = st.columns([1,1])
+st.markdown(
+
+"""
+
+<div class="hero">
 
 
+<h1>
 
-with hero1:
+Transform Data Into Decisions 🤖
 
-
-    st.markdown(
-
-    """
-
-    <div class="card">
+</h1>
 
 
-    <h2>
-
-    Welcome to Punit AI Analyzer 🤖
-
-    </h2>
+<p>
 
 
-
-    <p>
-
-    Upload your Excel or CSV file and get:
+Upload your data → Clean → Analyze → Create Charts → Build Dashboard
 
 
-    </p>
+</p>
 
 
-    <ul>
+</div>
 
 
-    <li>🧹 Automatic data cleaning</li>
+""",
 
-    <li>📊 Professional charts</li>
+unsafe_allow_html=True
 
-    <li>📈 AI dashboard creation</li>
-
-    <li>🤖 Business insights</li>
-
-    <li>📄 Reports download</li>
-
-
-    </ul>
-
-
-
-    </div>
-
-
-    """,
-
-    unsafe_allow_html=True
-
-    )
+)
 
 
 
 
 
-with hero2:
-
-
-    st.info(
-
-    """
-
-    Supported:
-
-
-    📊 Excel
-
-    📄 CSV
-
-    📈 Sales Reports
-
-    💼 Business Data
-
-    📉 Analytics Data
-
-
-    """
-
-    )
-
-
-
-
-
-st.divider()
-
+st.write("")
 
 
 
@@ -309,7 +268,7 @@ st.divider()
 
 st.subheader(
 
-"📂 Upload Your Dataset"
+"📂 Upload Dataset"
 
 )
 
@@ -317,15 +276,15 @@ st.subheader(
 
 uploaded_file = st.file_uploader(
 
-"Upload Excel or CSV",
+"Upload Excel or CSV file",
 
 type=[
 
+"csv",
+
 "xlsx",
 
-"xls",
-
-"csv"
+"xls"
 
 ]
 
@@ -346,7 +305,7 @@ if uploaded_file:
         if uploaded_file.name.endswith(".csv"):
 
 
-            df=pd.read_csv(
+            data = pd.read_csv(
 
                 uploaded_file
 
@@ -356,7 +315,7 @@ if uploaded_file:
         else:
 
 
-            df=pd.read_excel(
+            data = pd.read_excel(
 
                 uploaded_file
 
@@ -364,7 +323,7 @@ if uploaded_file:
 
 
 
-        st.session_state.df=df
+        st.session_state.df = data
 
 
 
@@ -379,9 +338,10 @@ if uploaded_file:
     except Exception as e:
 
 
+
         st.error(
 
-        f"Upload error: {e}"
+        f"File loading error: {e}"
 
         )
 
@@ -390,7 +350,7 @@ if uploaded_file:
 
 
 # =====================================================
-# DATA PREVIEW
+# DATA ANALYSIS
 # =====================================================
 
 
@@ -399,13 +359,67 @@ if st.session_state.df is not None:
 
 
 
-    df=st.session_state.df
+    df = st.session_state.df
 
 
 
     st.subheader(
 
-    "👀 Dataset Preview"
+    "📌 Dataset Overview"
+
+    )
+
+
+
+    col1,col2,col3,col4 = st.columns(4)
+
+
+
+    col1.metric(
+
+    "Rows",
+
+    df.shape[0]
+
+    )
+
+
+
+    col2.metric(
+
+    "Columns",
+
+    df.shape[1]
+
+    )
+
+
+
+    col3.metric(
+
+    "Duplicate Rows",
+
+    df.duplicated().sum()
+
+    )
+
+
+
+    col4.metric(
+
+    "Missing Values",
+
+    int(df.isnull().sum().sum())
+
+    )
+
+
+
+
+
+    st.subheader(
+
+    "Preview"
 
     )
 
@@ -413,63 +427,11 @@ if st.session_state.df is not None:
 
     st.dataframe(
 
-        df.head(),
+    df.head(20),
 
-        use_container_width=True
+    use_container_width=True
 
     )
-
-
-
-
-
-    # Metrics
-
-
-    c1,c2,c3=st.columns(3)
-
-
-
-    with c1:
-
-
-        st.metric(
-
-        "Rows",
-
-        df.shape[0]
-
-        )
-
-
-
-    with c2:
-
-
-        st.metric(
-
-        "Columns",
-
-        df.shape[1]
-
-        )
-
-
-
-    with c3:
-
-
-        missing=df.isnull().sum().sum()
-
-
-
-        st.metric(
-
-        "Missing Values",
-
-        missing
-
-        )
 
 
 
@@ -481,33 +443,37 @@ if st.session_state.df is not None:
 
 
 
+
     # =================================================
-    # DATA CLEANING
+    # CLEANING ENGINE
     # =================================================
+
 
 
     st.subheader(
 
-    "🧹 Data Cleaning Engine"
+    "🧹 AI Data Cleaning Engine"
 
     )
 
 
 
 
+
     if st.button(
 
-    "Clean My Data 🚀"
+    "✨ Clean My Data"
 
     ):
 
 
 
-        clean=df.copy()
+        clean = df.copy()
 
 
 
         # remove empty columns
+
 
         clean.dropna(
 
@@ -521,7 +487,8 @@ if st.session_state.df is not None:
 
 
 
-        # remove duplicate rows
+        # remove duplicates
+
 
         clean.drop_duplicates(
 
@@ -531,89 +498,135 @@ if st.session_state.df is not None:
 
 
 
-        # fill missing values
+
+
+        # handle missing values safely
 
 
         for col in clean.columns:
 
 
-            if clean[col].dtype=="object":
+
+            if pd.api.types.is_numeric_dtype(
+
+                clean[col]
+
+            ):
 
 
-                clean[col].fillna(
 
-                    "Unknown",
+                clean[col] = clean[col].fillna(
 
-                    inplace=True
+                    clean[col].median()
 
                 )
+
 
 
             else:
 
 
-                clean[col].fillna(
 
-                    clean[col].median(),
+                clean[col] = clean[col].fillna(
 
-                    inplace=True
+                    "Unknown"
 
                 )
 
 
 
 
-        st.session_state.clean_df=clean
+
+        # convert numeric text columns
+
+
+        for col in clean.columns:
 
 
 
-        st.session_state.df=clean
+            try:
+
+
+
+                converted = pd.to_numeric(
+
+                    clean[col]
+
+                )
+
+
+
+                clean[col] = converted
+
+
+
+            except:
+
+
+
+                pass
+
+
+
+
+
+        st.session_state.clean_df = clean
+
+
+        st.session_state.df = clean
+
+
 
 
 
         st.success(
 
-        "Data cleaned successfully ✅"
+        "Cleaning completed successfully ✅"
 
         )
 
 
 
+
+
+
+
+    # =================================================
+    # CLEAN RESULT
+    # =================================================
 
 
     if st.session_state.clean_df is not None:
 
 
 
-        clean=st.session_state.clean_df
+        clean = st.session_state.clean_df
 
 
 
-        quality=round(
+        quality = round(
 
-        (
+            (
 
-        1 -
+            1 -
 
-        (
+            (
 
-        clean.isnull().sum().sum()
+            clean.isnull().sum().sum()
 
-        /
+            /
 
-        (clean.shape[0]*clean.shape[1])
+            max(clean.size,1)
 
-        )
+            )
 
-        )
+            )
 
-        *
+            *
 
-        100
+            100,
 
-        ,
-
-        2
+            2
 
         )
 
@@ -629,15 +642,24 @@ if st.session_state.df is not None:
 
 
 
-
-
         st.dataframe(
 
-        clean.head(),
+        clean.head(20),
 
         use_container_width=True
 
         )
+
+
+
+else:
+
+
+    st.info(
+
+    "Please upload a file to start analysis 🚀"
+
+    )
 
 
 
