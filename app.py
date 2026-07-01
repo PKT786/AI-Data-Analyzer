@@ -672,74 +672,99 @@ else:
 # PART 2 PREMIUM
 # CHART STUDIO + DASHBOARD
 # =====================================================
+# =====================================================
+# PREMIUM CHART BUILDER
+# =====================================================
 
 
 import plotly.express as px
-import plotly.graph_objects as go
 import random
 
 
 
-# =====================================================
-# DATA CHECK
-# =====================================================
+if "charts" not in st.session_state:
+    st.session_state.charts=[]
 
 
-if st.session_state.df is not None:
 
 
-    df = st.session_state.df
+if "df" in st.session_state and st.session_state.df is not None:
+
+
+    df=st.session_state.df
 
 
 
     st.divider()
 
-
-    st.subheader(
-        "📊 Premium Chart Studio"
-    )
+    st.subheader("📊 AI Chart Studio")
 
 
 
-    numeric_cols = df.select_dtypes(
+    # remove useless columns
+
+
+    ignore=[]
+
+
+    for c in df.columns:
+
+
+        if "id" in c.lower():
+
+            ignore.append(c)
+
+
+
+    usable_cols=[
+
+        c for c in df.columns
+
+        if c not in ignore
+
+    ]
+
+
+
+    numeric_cols=df[usable_cols].select_dtypes(
+
         include="number"
+
     ).columns.tolist()
 
 
 
-    if len(numeric_cols)==0:
+    text_cols=df[usable_cols].select_dtypes(
 
+        exclude="number"
 
-        st.warning(
-            "No numeric columns available"
-        )
-
-        st.stop()
+    ).columns.tolist()
 
 
 
-    col1,col2,col3 = st.columns(3)
+
+    c1,c2,c3=st.columns(3)
 
 
 
-    with col1:
+    with c1:
 
 
-        chart_type = st.selectbox(
+        chart_type=st.selectbox(
 
-        "Chart Type",
+        "Select Chart",
 
         [
 
-        "Bar",
+        "Bar Chart",
 
-        "Line",
+        "Line Chart",
 
-        "Area",
+        "Area Chart",
 
-        "Pie",
+        "Pie Chart",
 
-        "Scatter"
+        "Scatter Chart"
 
         ]
 
@@ -747,204 +772,287 @@ if st.session_state.df is not None:
 
 
 
-    with col2:
+    with c2:
 
 
-        x_axis = st.selectbox(
+        x_col=st.selectbox(
 
-        "Category Column",
+        "Category",
 
-        df.columns
-
-        )
-
-
-
-    with col3:
-
-
-        y_axis = st.selectbox(
-
-        "Value Column",
-
-        numeric_cols
+        usable_cols
 
         )
 
 
 
+    with c3:
 
 
+        if numeric_cols:
 
+            y_col=st.selectbox(
 
-    if st.button(
+            "Measure",
 
-    "🚀 Add To Dashboard"
+            numeric_cols
 
-    ):
+            )
 
+        else:
 
+            y_col=None
 
-        try:
 
 
 
-            if chart_type=="Bar":
+    # aggregation
 
 
-                fig=px.bar(
+    if y_col:
 
-                df,
 
-                x=x_axis,
+        chart_df=(
 
-                y=y_axis,
+        df.groupby(x_col)[y_col]
 
-                title=f"{y_axis} by {x_axis}",
+        .sum()
 
-                template="plotly_white",
+        .reset_index()
 
-                color=y_axis
+        .sort_values(
 
-                )
+        y_col,
 
+        ascending=False
 
+        )
 
+        .head(20)
 
+        )
 
-            elif chart_type=="Line":
 
 
-                fig=px.line(
+    else:
 
-                df,
 
-                x=x_axis,
+        chart_df=df.head(20)
 
-                y=y_axis,
 
-                markers=True,
 
-                title=f"{y_axis} Trend",
 
-                template="plotly_white"
 
-                )
+    create,add=st.columns(2)
 
 
 
 
+    with create:
 
-            elif chart_type=="Area":
 
+        create_chart=st.button(
 
-                fig=px.area(
+        "🎨 Create Chart",
 
-                df,
+        use_container_width=True
 
-                x=x_axis,
+        )
 
-                y=y_axis,
 
-                title=f"{y_axis} Growth",
 
-                template="plotly_white"
 
-                )
 
+    with add:
 
 
+        add_dashboard=st.button(
 
+        "➕ Add To Dashboard",
 
-            elif chart_type=="Pie":
+        use_container_width=True
 
+        )
 
-                fig=px.pie(
 
-                df,
 
-                names=x_axis,
 
-                values=y_axis,
 
-                title=f"{y_axis} Distribution"
 
-                )
+    if create_chart:
 
 
 
+        if chart_type=="Bar Chart":
 
 
-            else:
+            fig=px.bar(
 
+            chart_df,
 
-                fig=px.scatter(
+            x=x_col,
 
-                df,
+            y=y_col,
 
-                x=x_axis,
+            text_auto=True,
 
-                y=y_axis,
+            color=y_col,
 
-                title="Relationship Analysis"
-
-                )
-
-
-
-
-
-            fig.update_layout(
-
-                height=450,
-
-                title_font_size=22,
-
-                margin=dict(
-
-                l=20,
-
-                r=20,
-
-                t=60,
-
-                b=20
-
-                )
+            title=f"{y_col} by {x_col}"
 
             )
 
 
 
-            st.session_state.charts.append(fig)
 
+        elif chart_type=="Line Chart":
+
+
+            fig=px.line(
+
+            chart_df,
+
+            x=x_col,
+
+            y=y_col,
+
+            markers=True,
+
+            title=f"{y_col} Trend"
+
+            )
+
+
+
+
+        elif chart_type=="Area Chart":
+
+
+            fig=px.area(
+
+            chart_df,
+
+            x=x_col,
+
+            y=y_col,
+
+            title="Growth Analysis"
+
+            )
+
+
+
+
+        elif chart_type=="Pie Chart":
+
+
+            fig=px.pie(
+
+            chart_df,
+
+            names=x_col,
+
+            values=y_col,
+
+            title="Contribution"
+
+            )
+
+
+
+
+        else:
+
+
+            fig=px.scatter(
+
+            chart_df,
+
+            x=x_col,
+
+            y=y_col,
+
+            size=y_col,
+
+            title="Relationship"
+
+            )
+
+
+
+
+
+        fig.update_layout(
+
+        template="plotly_white",
+
+        height=450,
+
+        title_font_size=22
+
+        )
+
+
+
+        st.session_state.current_chart=fig
+
+
+
+        st.plotly_chart(
+
+        fig,
+
+        use_container_width=True,
+
+        key="preview_chart"
+
+        )
+
+
+
+
+
+
+    if add_dashboard:
+
+
+        if "current_chart" in st.session_state:
+
+
+            st.session_state.charts.append(
+
+            st.session_state.current_chart
+
+            )
 
 
             st.success(
 
-            "Added to dashboard 🎯"
+            "Chart added to dashboard 🚀"
+
+            )
+
+        else:
+
+
+            st.warning(
+
+            "Create chart first"
 
             )
 
 
 
-        except Exception as e:
-
-
-            st.error(e)
-
-
-
-
 
 
 
 # =====================================================
-# DASHBOARD ENGINE
+# DASHBOARD
 # =====================================================
+
 
 
 if len(st.session_state.charts)>0:
+
 
 
     st.divider()
@@ -952,35 +1060,26 @@ if len(st.session_state.charts)>0:
 
     st.subheader(
 
-    "🚀 Punit AI Dashboard"
+    "🚀 Punit AI Analytics Dashboard"
 
     )
 
 
 
+    colors=[
 
-    backgrounds=[
+    "#0f172a",
 
-    "#020617",
-
-    "#172554",
+    "#1e293b",
 
     "#312e81",
 
-    "#064e3b",
-
-    "#3f1d2e"
+    "#064e3b"
 
     ]
 
 
-
-    bg=random.choice(
-
-    backgrounds
-
-    )
-
+    bg=random.choice(colors)
 
 
 
@@ -988,29 +1087,22 @@ if len(st.session_state.charts)>0:
 
     f"""
 
-    <div style="
+    <div style='
 
     background:{bg};
 
-    padding:35px;
+    padding:30px;
 
-    border-radius:30px;
+    border-radius:25px;
 
-    ">
+    '>
 
 
-    <h1 style="color:white">
+    <h1 style='color:white'>
 
-    📊 Analytics Dashboard
+    📊 Business Dashboard
 
     </h1>
-
-
-    <p style="color:white">
-
-    AI Generated Business Insights
-
-    </p>
 
 
     </div>
@@ -1024,85 +1116,14 @@ if len(st.session_state.charts)>0:
 
 
 
-    st.write("")
+    for i in range(0,len(st.session_state.charts),2):
+
+
+        col1,col2=st.columns(2)
 
 
 
-
-
-    # KPI CARDS
-
-
-    k1,k2,k3,k4=st.columns(4)
-
-
-
-    k1.metric(
-
-    "Total Records",
-
-    df.shape[0]
-
-    )
-
-
-    k2.metric(
-
-    "Columns",
-
-    df.shape[1]
-
-    )
-
-
-    k3.metric(
-
-    "Charts",
-
-    len(st.session_state.charts)
-
-    )
-
-
-    k4.metric(
-
-    "Data Status",
-
-    "Clean"
-
-    )
-
-
-
-
-
-    st.write("")
-
-
-
-
-
-    # CHART GRID
-
-
-    for i in range(
-
-        0,
-
-        len(st.session_state.charts),
-
-        2
-
-    ):
-
-
-
-        c1,c2=st.columns(2)
-
-
-
-        with c1:
-
+        with col1:
 
 
             st.plotly_chart(
@@ -1111,7 +1132,7 @@ if len(st.session_state.charts)>0:
 
             use_container_width=True,
 
-            key=f"dash_left_{i}"
+            key=f"chart_{i}"
 
             )
 
@@ -1120,7 +1141,7 @@ if len(st.session_state.charts)>0:
         if i+1 < len(st.session_state.charts):
 
 
-            with c2:
+            with col2:
 
 
                 st.plotly_chart(
@@ -1129,73 +1150,6 @@ if len(st.session_state.charts)>0:
 
                 use_container_width=True,
 
-                key=f"dash_right_{i}"
+                key=f"chart_{i+1}"
 
                 )
-
-
-
-
-
-
-# =====================================================
-# AUTO DASHBOARD
-# =====================================================
-
-
-st.divider()
-
-
-
-st.subheader(
-
-"🤖 One Click AI Dashboard"
-
-)
-
-
-
-
-if st.button(
-
-"Generate Smart Dashboard 🚀"
-
-):
-
-
-    auto=[]
-
-
-
-    for col in numeric_cols[:3]:
-
-
-        auto.append(
-
-        px.histogram(
-
-        df,
-
-        x=col,
-
-        title=f"{col} Analysis",
-
-        template="plotly_white"
-
-        )
-
-        )
-
-
-
-    st.session_state.charts = auto
-
-
-
-    st.success(
-
-    "AI Dashboard Generated"
-
-    )
-
-
