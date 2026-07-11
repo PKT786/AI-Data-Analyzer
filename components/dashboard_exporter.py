@@ -38,39 +38,98 @@ class DashboardExporter:
     """Exports a Dashboard object to various premium file formats."""
 
     # ------------------------------------------------------
-    # PNG - stitches all widget charts into one tall image
+    # Composed "Dashboard View" image - mirrors the actual
+    # app layout: gradient header, KPI cards, chart grid.
+    # Used by export_png() and embedded into the Excel /
+    # PowerPoint exports so they match what is on screen.
     # ------------------------------------------------------
 
+    def _render_dashboard_image(self, dashboard: Dashboard, columns: int = 3):
+        from PIL import Image, ImageDraw, ImageFont
+
+        theme = dashboard.theme
+        card_w, chart_h = 620, 380
+        title_h = 40
+        card_h = title_h + chart_h + 24
+        gap = 24
+        margin = 30
+        header_h = 130
+        kpi_h = 110 if dashboard.kpis else 0
+
+        widgets = [w for w in dashboard.widgets if w.visible and w.chart is not None]
+        rows = max(1, -(-len(widgets) // columns)) if widgets else 1
+
+        canvas_w = margin * 2 + columns * card_w + (columns - 1) * gap
+        canvas_h = (
+            header_h + kpi_h + margin
+            + rows * card_h + (rows - 1) * gap
+            + margin
+        )
+
+        canvas = Image.new("RGB", (canvas_w, canvas_h), self._hex_to_rgb255(theme.background))
+        draw = ImageDraw.Draw(canvas)
+
+        font_regular, font_bold, font_title, font_small = self._load_fonts()
+
+        # ---- Header banner (gradient) ----
+        header_top = self._hex_to_rgb255(theme.primary)
+        header_bottom = self._hex_to_rgb255(theme.secondary)
+        for y in range(header_h):
+            t = y / max(header_h - 1, 1)
+            blended = tuple(int(header_top[i] + (header_bottom[i] - header_top[i]) * t) for i in range(3))
+            draw.line([(0, y), (canvas_w, y)], fill=blended)
+
+        header_text_color = self._hex_to_rgb255(theme.header_text_color)
+        draw.text((margin, 26), dashboard.title, font=font_title, fill=header_text_color)
+        draw.text((margin, 74), dashboard.subtitle or "", font=font_regular, fill=header_text_color)
+
+        # ---- KPI cards ----
+        y_cursor = header_h + margin
+        if dashboard.kpis:
+            kpi_count = len(dashboard.kpis)
+            kpi_w = (canvas_w - margin * 2 - gap * (kpi_count - 1)) / kpi_count
+            for i, kpi in enumerate(dashboard.kpis):
+                x0 = margin + i * (kpi_w + gap)
+                x1 = x0 + kpi_w
+                y1 = y_cursor + kpi_h - 20
+                self._rounded_card(draw, (x0, y_cursor, x1, y1), theme)
+                draw.text((x0 + 16, y_cursor + 14), str(kpi.get("label", "")).upper(),
+                          font=font_small, fill=self._hex_to_rgb255(theme.muted_text))
+                draw.text((x0 + 16, y_cursor + 38), str(kpi.get("value", "")),
+                          font=font_bold, fill=self._hex_to_rgb255(theme.primary))
+            y_cursor += kpi_h
+
+        # ---- Chart grid ----
+        for idx, widget in enumerate(widgets):
+            row, col = divmod(idx, columns)
+            x0 = margin + col * (card_w + gap)
+            y0 = y_cursor + row * (card_h + gap)
+            x1 = x0 + card_w
+            y1 = y0 + card_h
+
+            self._rounded_card(draw, (x0, y0, x1, y1), theme)
+            draw.text((x0 + 16, y0 + 10), widget.title, font=font_bold,
+                       fill=self._hex_to_rgb255(theme.text_color))
+
+            try:
+                png_bytes = widget.chart.to_image(
+                    format="png", width=card_w - 32, height=chart_h, scale=2
+                )
+                chart_img = Image.open(io.BytesIO(png_bytes)).convert("RGB")
+                chart_img = chart_img.resize((card_w - 32, chart_h))
+                canvas.paste(chart_img, (x0 + 16, y0 + title_h))
+            except Exception as ex:
+                logger.warning("Could not render widget '%s' for dashboard image: %s", widget.title, ex)
+
+        return canvas
+
     def export_png(self, dashboard: Dashboard) -> Optional[bytes]:
+        """Export a single PNG that mirrors the current on-screen dashboard view."""
         try:
-            from PIL import Image
-
-            images = []
-            for widget in dashboard.widgets:
-                if widget.chart is None:
-                    continue
-                try:
-                    png_bytes = widget.chart.to_image(format="png", width=900, height=520, scale=2)
-                    images.append(Image.open(io.BytesIO(png_bytes)))
-                except Exception as ex:
-                    logger.warning("Could not render widget '%s' to PNG: %s", widget.title, ex)
-
-            if not images:
-                return None
-
-            width = max(img.width for img in images)
-            total_height = sum(img.height for img in images) + 40 * len(images)
-            canvas = Image.new("RGB", (width, total_height), "white")
-
-            y = 0
-            for img in images:
-                canvas.paste(img, (0, y))
-                y += img.height + 40
-
+            canvas = self._render_dashboard_image(dashboard)
             buffer = io.BytesIO()
             canvas.save(buffer, format="PNG")
             return buffer.getvalue()
-
         except Exception as ex:
             logger.exception("PNG export failed: %s", ex)
             return None
@@ -151,6 +210,24 @@ class DashboardExporter:
         try:
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+                workbook = writer.book
+
+                # ---- Dashboard View sheet (matches the on-screen dashboard) ----
+                try:
+                    image = self._render_dashboard_image(dashboard)
+                    img_buffer = io.BytesIO()
+                    image.save(img_buffer, format="PNG")
+                    img_buffer.seek(0)
+
+                    dash_sheet = workbook.add_worksheet("Dashboard View")
+                    writer.sheets["Dashboard View"] = dash_sheet
+                    scale = min(1.0, 1400 / image.width)
+                    dash_sheet.insert_image(
+                        "A1", "dashboard.png",
+                        {"image_data": img_buffer, "x_scale": scale, "y_scale": scale},
+                    )
+                except Exception as ex:
+                    logger.warning("Could not embed dashboard image in Excel: %s", ex)
 
                 kpi_rows = [
                     {"KPI": k.get("label"), "Value": k.get("value")}
@@ -213,6 +290,33 @@ class DashboardExporter:
             tf2.text = dashboard.subtitle or ""
             tf2.paragraphs[0].font.size = Pt(18)
             tf2.paragraphs[0].font.color.rgb = RGBColor(255, 255, 255)
+
+            # ---- Dashboard Overview slide (matches the on-screen dashboard) ----
+            try:
+                image = self._render_dashboard_image(dashboard)
+                img_buffer = io.BytesIO()
+                image.save(img_buffer, format="PNG")
+                img_buffer.seek(0)
+
+                overview_slide = prs.slides.add_slide(blank)
+                header = overview_slide.shapes.add_textbox(Inches(0.5), Inches(0.15), Inches(12), Inches(0.6))
+                header.text_frame.text = "Dashboard Overview"
+                header.text_frame.paragraphs[0].font.size = Pt(24)
+                header.text_frame.paragraphs[0].font.bold = True
+
+                aspect = image.height / image.width
+                pic_width = Inches(12.3)
+                pic_height = Inches(12.3 * aspect)
+                max_height = Inches(6.6)
+                if pic_height > max_height:
+                    pic_height = max_height
+                    pic_width = Inches(6.6 / aspect)
+
+                overview_slide.shapes.add_picture(
+                    img_buffer, Inches(0.5), Inches(0.85), width=pic_width, height=pic_height
+                )
+            except Exception as ex:
+                logger.warning("Could not add dashboard overview slide: %s", ex)
 
             for widget in dashboard.widgets:
                 if widget.chart is None:
@@ -356,3 +460,38 @@ class DashboardExporter:
             return (r, g, b)
         except Exception:
             return (0.15, 0.35, 0.85)
+
+    @staticmethod
+    def _hex_to_rgb255(hex_color: str) -> tuple[int, int, int]:
+        try:
+            hex_color = (hex_color or "").lstrip("#")
+            if len(hex_color) != 6:
+                return (37, 99, 235)
+            return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+        except Exception:
+            return (37, 99, 235)
+
+    @staticmethod
+    def _rounded_card(draw, box, theme, radius: int = 14):
+        from PIL import ImageColor
+
+        fill = DashboardExporter._hex_to_rgb255(theme.card_background) \
+            if not str(theme.card_background).startswith("rgba") else (255, 255, 255)
+        outline = DashboardExporter._hex_to_rgb255(theme.border_color)
+        draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=1)
+
+    @staticmethod
+    def _load_fonts():
+        from PIL import ImageFont
+        import matplotlib
+
+        base = matplotlib.get_data_path() + "/fonts/ttf/"
+        try:
+            regular = ImageFont.truetype(base + "DejaVuSans.ttf", 16)
+            bold = ImageFont.truetype(base + "DejaVuSans-Bold.ttf", 20)
+            title = ImageFont.truetype(base + "DejaVuSans-Bold.ttf", 30)
+            small = ImageFont.truetype(base + "DejaVuSans.ttf", 13)
+        except Exception:
+            regular = bold = title = small = ImageFont.load_default()
+        return regular, bold, title, small
+
