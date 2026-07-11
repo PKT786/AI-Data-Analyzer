@@ -365,15 +365,27 @@ class DashboardExporter:
             if widget.chart is None:
                 continue
             try:
-                chart_html = widget.chart.to_html(
-                    full_html=False, include_plotlyjs=False, config={"displaylogo": False}
+                # Chart title is already shown in the card's <h3> heading,
+                # so hide the figure's own internal title to avoid a
+                # duplicate/overlapping title inside the plot area.
+                # Clone first so this never mutates the shared widget.chart
+                # object used by the live app / other exports.
+                import plotly.graph_objects as go
+                fig = go.Figure(widget.chart)
+                fig.update_layout(title=None)
+                chart_html = fig.to_html(
+                    full_html=False,
+                    include_plotlyjs=False,
+                    config={"displaylogo": False, "responsive": True},
+                    default_width="100%",
+                    default_height="360px",
                 )
             except Exception:
                 continue
             chart_divs += f"""
             <div class="chart-card">
                 <h3>{widget.title}</h3>
-                {chart_html}
+                <div class="chart-frame">{chart_html}</div>
             </div>
             """
 
@@ -386,6 +398,7 @@ class DashboardExporter:
 <title>{dashboard.title}</title>
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 <style>
+    * {{ box-sizing: border-box; }}
     body {{
         margin: 0;
         font-family: {theme.font_family};
@@ -412,14 +425,18 @@ class DashboardExporter:
     .kpi-value {{ font-size: 26px; font-weight: 700; color: {theme.primary}; }}
     .chart-grid {{
         display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
-        gap: 20px; padding: 24px 40px 40px;
+        gap: 20px; padding: 24px 40px 40px; align-items: start;
     }}
     .chart-card {{
         background: {theme.card_background};
         border-radius: {theme.border_radius}px;
         padding: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        overflow: hidden; position: relative;
     }}
     .chart-card h3 {{ margin: 4px 0 8px; font-size: 15px; color: {theme.text_color}; }}
+    .chart-frame {{ width: 100%; height: 360px; position: relative; overflow: hidden; }}
+    .chart-frame .js-plotly-plot,
+    .chart-frame .plotly-graph-div {{ width: 100% !important; height: 100% !important; }}
     .summary {{ padding: 0 40px; }}
     .summary-card {{
         background: {theme.card_background}; border-radius: {theme.border_radius}px;
@@ -440,6 +457,24 @@ class DashboardExporter:
         </div>
     </div>
     <div class="chart-grid">{chart_divs}</div>
+    <script>
+        // Belt-and-suspenders: force every Plotly chart to re-fit its
+        // container after the page fully loads and on every resize, so
+        // charts never stay stuck at a stale size and bleed into
+        // neighbouring cards.
+        function resizeAllPlots() {{
+            document.querySelectorAll('.js-plotly-plot').forEach(function (gd) {{
+                try {{ Plotly.Plots.resize(gd); }} catch (e) {{}}
+            }});
+        }}
+        window.addEventListener('load', resizeAllPlots);
+        window.addEventListener('resize', resizeAllPlots);
+        if (window.ResizeObserver) {{
+            document.querySelectorAll('.chart-frame').forEach(function (frame) {{
+                new ResizeObserver(resizeAllPlots).observe(frame);
+            }});
+        }}
+    </script>
 </body>
 </html>"""
         return html
