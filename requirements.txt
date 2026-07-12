@@ -1,0 +1,16 @@
+streamlit
+pandas
+numpy
+openpyxl
+xlsxwriter
+pyarrow
+plotly
+matplotlib
+python-dateutil
+pytz
+PyYAML
+scikit-learn>=1.5
+kaleido==0.2.1
+python-pptx
+reportlab
+Pillow
