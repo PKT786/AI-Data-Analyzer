@@ -15,3 +15,4 @@ python-pptx
 reportlab
 Pillow
 requests>=2.31.0
+python-docx>=1.1.0
