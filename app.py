@@ -148,6 +148,23 @@ def inject_premium_css() -> None:
         }
         .pth-cta-title { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 24px; }
         .pth-cta-sub { opacity: 0.85; font-size: 14.5px; margin-top: 6px; }
+
+        .pth-auth-feature-list { margin-top: 18px; }
+        .pth-auth-feature-item {
+            display: flex; align-items: flex-start; gap: 12px;
+            margin-bottom: 14px;
+        }
+        .pth-auth-feature-icon {
+            width: 34px; height: 34px; min-width: 34px; border-radius: 10px;
+            background: linear-gradient(135deg, #1C2D60, #483A96);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px;
+        }
+        .pth-auth-feature-title {
+            font-family: 'Poppins', sans-serif; font-weight: 600;
+            font-size: 14.5px; color: #0F172A;
+        }
+        .pth-auth-feature-desc { font-size: 12.8px; color: #64748B; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -233,6 +250,31 @@ def render_auth_gate() -> None:
                 "AI cleaning &bull; dashboards &bull; insights &bull; reports</div>",
                 unsafe_allow_html=True,
             )
+
+        auth_features = [
+            ("🧹", "Smart Data Cleaning", "One-click duplicate, missing-value and outlier cleanup."),
+            ("🩺", "Data Health Check", "Instant data quality score before you analyze anything."),
+            ("🤖", "AI-Powered Analysis", "Automatic business insights and an executive summary."),
+            ("📊", "Dynamic Dashboards", "Premium, themeable dashboards generated in seconds."),
+            ("📈", "Chart Creation", "Bar, line, pie, scatter, heatmap and more, one click away."),
+            ("📄", "One-Click Reports", "Export polished PDF, Word, Excel and HTML reports."),
+        ]
+        feature_items = "".join(
+            f"""
+            <div class="pth-auth-feature-item">
+                <div class="pth-auth-feature-icon">{icon}</div>
+                <div>
+                    <div class="pth-auth-feature-title">{title}</div>
+                    <div class="pth-auth-feature-desc">{desc}</div>
+                </div>
+            </div>
+            """
+            for icon, title, desc in auth_features
+        )
+        st.markdown(
+            f'<div class="pth-auth-feature-list">{feature_items}</div>',
+            unsafe_allow_html=True,
+        )
 
     with right:
         st.markdown(
@@ -734,8 +776,8 @@ def render_logged_out_home() -> None:
 def render_logged_in_home() -> None:
     """Home content shown after login: full-width hero + platform intro."""
 
-    show_branding()
     render_account_bar()
+    show_branding()
 
     show_homepage()
     show_purpose()
@@ -823,3 +865,4 @@ if __name__ == "__main__":
         logger.exception(ex)
         st.error("Unexpected application error.")
         st.exception(ex)
+
