@@ -62,27 +62,31 @@ def load_report_data() -> Optional[Dict[str, Any]]:
     Load all required report data.
     """
 
-    dataset = session_manager.get(
-        "cleaned_dataframe"
-    )
+    # The Upload Data / Data Cleaning pages store the working dataframe
+    # under st.session_state.cleaned_df (falling back to .dataset for a
+    # dataset that hasn't been through the cleaning step yet).
+    dataset = st.session_state.get("cleaned_df")
 
     if dataset is None:
 
-        dataset = session_manager.get(
-            "current_dataframe"
-        )
+        dataset = st.session_state.get("dataset")
 
-    insights = session_manager.get(
-        "insights"
-    )
+    # The AI Insights page stores its output as a DashboardResult under
+    # st.session_state.dashboard_result.
+    dashboard_result = st.session_state.get("dashboard_result")
 
-    dashboard = session_manager.get(
-        "dashboard"
-    )
+    insights = dashboard_result.executive_summary if dashboard_result else None
 
-    dataset_info = session_manager.get(
-        "dataset_info"
-    )
+    dashboard = dashboard_result.dashboard if dashboard_result else None
+
+    dataset_info = None
+
+    if dataset is not None:
+
+        dataset_info = {
+            "rows": len(dataset),
+            "columns": len(dataset.columns),
+        }
 
     if dataset is None:
 
@@ -403,24 +407,8 @@ def generate_report(
                 "Generating report..."
             ):
 
-                report = report_builder.generate(
-
-                    dataset=report_data.get(
-                        "dataset"
-                    ),
-
-                    insights=report_data.get(
-                        "insights"
-                    ),
-
-                    dashboard=report_data.get(
-                        "dashboard"
-                    ),
-
-                    sections=sections,
-
-                    export_format=export_format,
-
+                report = report_builder.build_complete_report(
+                    df=report_data.get("dataset"),
                 )
 
             session_manager.set(
@@ -505,7 +493,7 @@ def preview_report() -> None:
         )
 
     #
-    # Dictionary Report
+    # Dictionary Report (from ReportBuilder.build_complete_report)
     #
 
     elif isinstance(
@@ -513,10 +501,31 @@ def preview_report() -> None:
         dict,
     ):
 
-        st.json(
-            report,
-            expanded=False,
-        )
+        summary = report.get("executive_summary", {}).get("summary_text", "")
+        health = report.get("conclusion", {}).get("health", {})
+        insights = report.get("business_insights", [])
+        recommendations = report.get("recommendations", [])
+
+        st.markdown(f"**Executive Summary**\n\n{summary}")
+
+        c1, c2 = st.columns(2)
+        with c1:
+            st.metric("Data Health Score", health.get("score", "N/A"))
+        with c2:
+            st.metric("Health Status", health.get("status", "N/A"))
+
+        if insights:
+            st.markdown("**Business Insights**")
+            for item in insights:
+                st.write(f"• {item}")
+
+        if recommendations:
+            st.markdown("**Recommendations**")
+            for item in recommendations:
+                st.write(f"• {item}")
+
+        with st.expander("View Raw Report Data"):
+            st.json(report, expanded=False)
 
     #
     # DataFrame Report
@@ -592,32 +601,31 @@ def download_report() -> None:
     )
 
     #
-    # Convert report to downloadable content.
+    # Convert report to downloadable content using the matching
+    # ReportBuilder export method for the selected format.
     #
 
-    if isinstance(
-        report,
-        str,
-    ):
+    if isinstance(report, str):
 
         download_content = report
 
-    elif isinstance(
-        report,
-        dict,
-    ):
+    elif isinstance(report, dict):
 
-        import json
-
-        download_content = json.dumps(
-
-            report,
-
-            indent=4,
-
-            default=str,
-
-        )
+        try:
+            if report_format == "PDF":
+                download_content = report_builder.export_pdf(report)
+            elif report_format == "Word":
+                download_content = report_builder.export_word(report)
+            elif report_format == "Excel":
+                download_content = report_builder.export_excel(report)
+            elif report_format == "HTML":
+                download_content = report_builder.export_html(report)
+            else:
+                download_content = report_builder.export_text(report)
+        except Exception as ex:
+            logger.exception(ex)
+            st.error(f"Could not build the {report_format} file: {ex}")
+            return
 
     else:
 
