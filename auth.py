@@ -455,3 +455,54 @@ def require_login() -> None:
         "sidebar navigation) to use AI Data Analyzer Pro."
     )
     st.stop()
+
+
+# ======================================================= SHARED ACCOUNT BAR
+
+def render_account_bar() -> None:
+    """
+    Shared "Logged in as ... | Log Out" bar. Call this on every page
+    (right after require_login()) so a logged-in user can log out from
+    anywhere, without going back to Home. The bar is pinned (sticky) to
+    the top of the content area so it stays visible while scrolling.
+    """
+    user = st.session_state.get("auth_user")
+    if not user:
+        return
+
+    st.markdown(
+        """
+        <style>
+        .st-key-pth_account_bar {
+            position: fixed !important;
+            top: 60px;
+            left: 0;
+            right: 0;
+            z-index: 500;
+            background: #F4F6FB;
+            border-bottom: 1px solid #E7EAF0;
+            padding: 10px 24px;
+        }
+        .st-key-pth_account_bar div[data-testid="stMarkdownContainer"] p {
+            margin-bottom: 0;
+            font-size: 14px;
+        }
+        [data-testid="stMain"] .block-container {
+            padding-top: 7.5rem;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.container(key="pth_account_bar"):
+        col1, col2 = st.columns([5, 1])
+        with col1:
+            st.markdown(
+                f"👋 Logged in as **{user['name']}**  •  {user['email']}"
+            )
+        with col2:
+            if st.button("Log Out", key="pth_logout_btn", use_container_width=True):
+                st.session_state.pop("auth_user", None)
+                st.rerun()
+
