@@ -9,6 +9,7 @@ Version : 2.1
 
 from __future__ import annotations
 
+import textwrap
 from pathlib import Path
 from typing import Dict
 
@@ -24,6 +25,19 @@ from utils.session_manager import session_manager
 import auth
 
 logger = get_logger(__name__)
+
+
+def _html(markup: str) -> str:
+    """
+    Strip common leading indentation from a multi-line HTML string
+    before handing it to st.markdown(unsafe_allow_html=True).
+
+    Without this, indented lines (4+ spaces - which is what you get
+    from a triple-quoted string written at normal Python indentation)
+    are interpreted by the markdown renderer as an indented CODE BLOCK,
+    so the raw HTML tags print as literal text instead of rendering.
+    """
+    return textwrap.dedent(markup).strip()
 
 # =====================================================
 # APPLICATION CONFIGURATION
@@ -259,16 +273,17 @@ def render_auth_gate() -> None:
             ("📈", "Chart Creation", "Bar, line, pie, scatter, heatmap and more, one click away."),
             ("📄", "One-Click Reports", "Export polished PDF, Word, Excel and HTML reports."),
         ]
+        # NOTE: no leading whitespace on any line here - st.markdown treats
+        # 4+ space indented lines as a code block, which would otherwise
+        # print this HTML as literal text instead of rendering it.
         feature_items = "".join(
-            f"""
-            <div class="pth-auth-feature-item">
-                <div class="pth-auth-feature-icon">{icon}</div>
-                <div>
-                    <div class="pth-auth-feature-title">{title}</div>
-                    <div class="pth-auth-feature-desc">{desc}</div>
-                </div>
-            </div>
-            """
+            '<div class="pth-auth-feature-item">'
+            f'<div class="pth-auth-feature-icon">{icon}</div>'
+            '<div>'
+            f'<div class="pth-auth-feature-title">{title}</div>'
+            f'<div class="pth-auth-feature-desc">{desc}</div>'
+            '</div>'
+            '</div>'
             for icon, title, desc in auth_features
         )
         st.markdown(
@@ -278,12 +293,12 @@ def render_auth_gate() -> None:
 
     with right:
         st.markdown(
-            """
+            _html("""
             <div class="pth-cta-card" style="margin-top:0;">
                 <div class="pth-cta-title">Welcome to AI Data Analyzer Pro</div>
                 <div class="pth-cta-sub">Log in or create a free account to get started.</div>
             </div>
-            """,
+            """),
             unsafe_allow_html=True,
         )
 
@@ -321,29 +336,21 @@ def render_auth_gate() -> None:
             if submitted_su:
                 success, message = auth.signup_user(su_name, su_email, su_mobile, su_password)
                 if success:
-                    st.success(message)
+                    # Clear the entered details now that the account is
+                    # created, and steer the user to the Log In tab.
+                    for field_key in ("signup_name", "signup_email", "signup_mobile", "signup_password"):
+                        st.session_state.pop(field_key, None)
+                    st.session_state["auth_flash"] = (
+                        "🎉 Signup successful! Please switch to the **Log In** tab above "
+                        "and sign in with your email and password."
+                    )
+                    st.rerun()
                 else:
                     # Includes the "already signed up with this email id" case
                     st.warning(message)
 
             st.caption("or sign up with")
             _render_social_buttons("signup")
-
-
-def render_account_bar() -> None:
-    user = st.session_state["auth_user"]
-    c1, c2 = st.columns([5, 1])
-    with c1:
-        st.markdown(
-            f"""<div class="pth-account-bar">
-                <span>👋 Logged in as <b>{user['name']}</b> &nbsp;•&nbsp; {user['email']}</span>
-            </div>""",
-            unsafe_allow_html=True,
-        )
-    with c2:
-        if st.button("Log Out", use_container_width=True):
-            st.session_state.pop("auth_user", None)
-            st.rerun()
 
 
 # =====================================================
@@ -364,14 +371,14 @@ def show_branding() -> None:
         st.warning("Hero image not found.")
 
     st.markdown(
-        """
+        _html("""
         <div class="pth-badge-row">
             <div class="pth-badge">🧹 Smart Data Cleaning</div>
             <div class="pth-badge">📊 Interactive Dashboards</div>
             <div class="pth-badge">🤖 AI-Generated Insights</div>
             <div class="pth-badge">📄 One-Click Reports</div>
         </div>
-        """,
+        """),
         unsafe_allow_html=True,
     )
     st.markdown("<br>", unsafe_allow_html=True)
@@ -482,13 +489,13 @@ def show_homepage() -> None:
         unsafe_allow_html=True,
     )
     st.markdown(
-        """
+        _html("""
         <div class='pth-section-sub'>
         Upload any spreadsheet or CSV and let AI Data Analyzer Pro clean it,
         understand it, visualize it, and explain it back to you — in minutes,
         not days.
         </div>
-        """,
+        """),
         unsafe_allow_html=True,
     )
 
@@ -505,20 +512,20 @@ def show_purpose() -> None:
         unsafe_allow_html=True,
     )
     st.markdown(
-        """
+        _html("""
         <div class='pth-section-sub'>
         A single workspace that takes you from a messy raw file to a
         boardroom-ready dashboard and report — without writing a line of
         code or wrestling with spreadsheet formulas.
         </div>
-        """,
+        """),
         unsafe_allow_html=True,
     )
 
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown(
-            """
+            _html("""
             <div class="pth-feature-card">
                 <div class="pth-feature-icon">📂</div>
                 <div class="pth-feature-title">1. Upload Anything</div>
@@ -527,12 +534,12 @@ def show_purpose() -> None:
                 Analyzer Pro instantly profiles rows, columns and data types.
                 </div>
             </div>
-            """,
+            """),
             unsafe_allow_html=True,
         )
     with c2:
         st.markdown(
-            """
+            _html("""
             <div class="pth-feature-card">
                 <div class="pth-feature-icon">🧠</div>
                 <div class="pth-feature-title">2. Let AI Do the Work</div>
@@ -541,12 +548,12 @@ def show_purpose() -> None:
                 and a written executive summary — generated for you.
                 </div>
             </div>
-            """,
+            """),
             unsafe_allow_html=True,
         )
     with c3:
         st.markdown(
-            """
+            _html("""
             <div class="pth-feature-card">
                 <div class="pth-feature-icon">📊</div>
                 <div class="pth-feature-title">3. Present With Confidence</div>
@@ -555,7 +562,7 @@ def show_purpose() -> None:
                 and HTML exports — ready to share or present.
                 </div>
             </div>
-            """,
+            """),
             unsafe_allow_html=True,
         )
 
@@ -605,13 +612,13 @@ def show_features() -> None:
     for i, (icon, title, desc) in enumerate(FEATURES):
         with cols[i % 3]:
             st.markdown(
-                f"""
+                _html(f"""
                 <div class="pth-feature-card">
                     <div class="pth-feature-icon">{icon}</div>
                     <div class="pth-feature-title">{title}</div>
                     <div class="pth-feature-desc">{desc}</div>
                 </div>
-                """,
+                """),
                 unsafe_allow_html=True,
             )
             st.markdown("<br>", unsafe_allow_html=True)
@@ -637,12 +644,12 @@ def show_capability_stats() -> None:
     for col, (value, label) in zip(cols, stats):
         with col:
             st.markdown(
-                f"""
+                _html(f"""
                 <div class="pth-stat-card">
                     <div class="pth-stat-value">{value}</div>
                     <div class="pth-stat-label">{label}</div>
                 </div>
-                """,
+                """),
                 unsafe_allow_html=True,
             )
 
@@ -679,12 +686,12 @@ def show_workflow() -> None:
         target = left if i % 2 == 0 else right
         with target:
             st.markdown(
-                f"""
+                _html(f"""
                 <div class="pth-step-card">
                     <div class="pth-step-num">{i + 1}</div>
                     <div class="pth-step-text">{step}</div>
                 </div>
-                """,
+                """),
                 unsafe_allow_html=True,
             )
 
@@ -751,12 +758,12 @@ def render_footer() -> None:
 
     st.divider()
     st.markdown(
-        """
+        _html("""
         <div style="text-align:center; color:#64748B; font-size:13px;">
         © 2026 <b>Punit Tech Hub</b> &nbsp;|&nbsp; AI Data Analyzer Pro<br>
         Professional AI-Powered Data Analytics Platform
         </div>
-        """,
+        """),
         unsafe_allow_html=True,
     )
 
@@ -776,7 +783,7 @@ def render_logged_out_home() -> None:
 def render_logged_in_home() -> None:
     """Home content shown after login: full-width hero + platform intro."""
 
-    render_account_bar()
+    auth.render_account_bar()
     show_branding()
 
     show_homepage()
