@@ -64,6 +64,7 @@ from email.mime.text import MIMEText
 
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
 logger = logging.getLogger(__name__)
 
@@ -482,6 +483,8 @@ def render_account_bar() -> None:
             background: #F4F6FB;
             border-bottom: 1px solid #E7EAF0;
             padding: 10px 24px;
+            box-sizing: border-box;
+            transition: left 0.15s ease;
         }
         .st-key-pth_account_bar div[data-testid="stMarkdownContainer"] p {
             margin-bottom: 0;
@@ -493,6 +496,33 @@ def render_account_bar() -> None:
         </style>
         """,
         unsafe_allow_html=True,
+    )
+
+    # The bar is fixed to the viewport (so it truly stays put while
+    # scrolling), which means it no longer follows the sidebar's flex
+    # layout. This tiny script keeps its left edge/width lined up with
+    # the actual main content area - so its text always starts to the
+    # right of the sidebar, whether the sidebar is expanded, collapsed,
+    # or resized.
+    components.html(
+        """
+        <script>
+        function pthAlignAccountBar() {
+            const doc = window.parent.document;
+            const main = doc.querySelector('[data-testid="stMain"]');
+            const bar = doc.querySelector('.st-key-pth_account_bar');
+            if (main && bar) {
+                const rect = main.getBoundingClientRect();
+                bar.style.left = rect.left + 'px';
+                bar.style.width = rect.width + 'px';
+            }
+        }
+        pthAlignAccountBar();
+        window.parent.addEventListener('resize', pthAlignAccountBar);
+        setInterval(pthAlignAccountBar, 400);
+        </script>
+        """,
+        height=0,
     )
 
     with st.container(key="pth_account_bar"):
