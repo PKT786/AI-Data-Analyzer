@@ -232,6 +232,99 @@ def oauth_configured(provider: str) -> bool:
     return False
 
 
+def _looks_like_placeholder(value) -> bool:
+    """Catches the un-edited example values from secrets.toml.example
+    (e.g. 'xxxx' or 'your-app-url.streamlit.app') so they don't get
+    mistaken for a real, working credential."""
+    text = str(value).lower()
+    return any(marker in text for marker in ("xxxx", "your-app", "your-app-url", "your-app-name"))
+
+
+def oauth_diagnostics() -> dict:
+    """
+    Debugging helper for "I added secrets.toml but the button still says
+    not configured." Reports exactly what Streamlit can see - WITHOUT
+    ever exposing the actual secret values - so a setup problem can be
+    pinpointed instead of guessed at.
+    """
+    try:
+        secrets_loaded = True
+        sections = list(st.secrets.keys())
+    except Exception as ex:
+        return {
+            "secrets_loaded": False,
+            "error": (
+                f"st.secrets could not be read at all: {ex}. This usually means "
+                f"secrets.toml is missing, in the wrong location, or has a TOML "
+                f"syntax error (e.g. a missing quote)."
+            ),
+        }
+
+    report = {"secrets_loaded": True, "sections_found": sections, "providers": {}}
+
+    for provider, keys in [
+        ("google", ["client_id", "client_secret", "redirect_uri"]),
+        ("facebook", ["app_id", "app_secret", "redirect_uri"]),
+    ]:
+        section_present = provider in st.secrets
+        key_status = {}
+        if section_present:
+            for key in keys:
+                raw = None
+                try:
+                    raw = st.secrets[provider].get(key)
+                except Exception:
+                    pass
+                filled_in = bool(raw) and not _looks_like_placeholder(raw)
+                key_status[key] = filled_in
+        report["providers"][provider] = {
+            "section_found": section_present,
+            "keys": key_status,
+        }
+
+    return report
+
+
+def render_oauth_diagnostics() -> None:
+    """Small, safe-to-show-anyone diagnostic panel for the login page -
+    no secret values are ever displayed, only True/False per key."""
+
+    with st.expander("⚙️ Login provider setup status (for admin)"):
+        diag = oauth_diagnostics()
+
+        if not diag.get("secrets_loaded"):
+            st.error(diag.get("error"))
+            st.caption(
+                "Fix: make sure `.streamlit/secrets.toml` exists next to app.py "
+                "(local), or that you pasted your secrets into your Streamlit "
+                "Community Cloud app's Settings -> Secrets panel (deployed) "
+                "and clicked Save."
+            )
+            return
+
+        st.caption(f"Sections Streamlit can see in secrets.toml: {diag['sections_found'] or 'none'}")
+
+        for provider, label in [("google", "Google"), ("facebook", "Facebook")]:
+            info = diag["providers"][provider]
+            st.markdown(f"**{label}**")
+            if not info["section_found"]:
+                st.warning(
+                    f"No `[{provider}]` section found at all. Add a `[{provider}]` "
+                    f"line exactly like that (lowercase, in square brackets) "
+                    f"followed by its keys."
+                )
+                continue
+
+            for key, ok in info["keys"].items():
+                if ok:
+                    st.success(f"`{key}` — found")
+                else:
+                    st.error(
+                        f"`{key}` — missing, empty, or still set to the "
+                        f"placeholder value from secrets.toml.example"
+                    )
+
+
 def build_google_auth_url() -> str | None:
     client_id = _secret("google", "client_id")
     redirect_uri = _secret("google", "redirect_uri")
