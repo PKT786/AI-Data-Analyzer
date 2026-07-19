@@ -352,6 +352,8 @@ def render_auth_gate() -> None:
             st.caption("or sign up with")
             _render_social_buttons("signup")
 
+    auth.render_oauth_diagnostics()
+
 
 # =====================================================
 # HERO SECTION
