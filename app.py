@@ -724,11 +724,123 @@ def show_application_status() -> None:
     horizontal_space()
 
 
+def render_privacy_policy_page() -> None:
+    """
+    Public Privacy Policy page - required by Google/Facebook OAuth app
+    review, and reachable without logging in (its URL is what you give
+    Google Cloud Console / Facebook App Settings as the Privacy Policy
+    link).
+    """
+
+    st.title("🔒 Privacy Policy")
+    st.caption("AI Data Analyzer Pro — Last updated: July 2026")
+
+    st.markdown(
+        _html("""
+        <div class='pth-section-sub' style='text-align:left; margin-bottom: 20px;'>
+        This Privacy Policy explains what information AI Data Analyzer Pro
+        collects, how it is used, and the choices you have. By creating an
+        account or using this application, you agree to the practices
+        described below.
+        </div>
+        """),
+        unsafe_allow_html=True,
+    )
+
+    st.subheader("1. Information We Collect")
+    st.markdown(
+        """
+- **Account information** you provide when you sign up: your name, email address, mobile number, and a securely hashed password.
+- **Social login information**: if you sign in with Google or Facebook, we receive your name and email address from that provider once you've authorized it. We never see or store your Google/Facebook password.
+- **Uploaded datasets**: files you upload (CSV/Excel/JSON) are processed to generate cleaning suggestions, AI insights, dashboards, and reports for your own use.
+- **Usage information**: basic application logs (e.g. errors, feature usage) used to keep the app reliable.
+        """
+    )
+
+    st.subheader("2. How We Use Your Information")
+    st.markdown(
+        """
+- To create and secure your account, and to let you log in (including "log in with the same email you already signed up with" checks).
+- To operate the features you use: data cleaning, data health checks, AI insights, dashboard generation, and report exports.
+- To send you account-related notifications (for example, confirming a new sign-in).
+- We do **not** sell your personal information, and we do not use your uploaded datasets for anything other than generating the analysis you requested.
+        """
+    )
+
+    st.subheader("3. How Your Information Is Stored")
+    st.markdown(
+        """
+- Account details are stored in a database associated with this application. Passwords are never stored in plain text — they are salted and hashed.
+- Uploaded datasets are processed to power the app's features and are tied to your session; they are not shared with other users.
+        """
+    )
+
+    st.subheader("4. Third-Party Services")
+    st.markdown(
+        """
+- **Google Sign-In** and **Facebook Login** — used only if you choose "Continue with Google/Facebook." These providers share your name and email with us after you approve the login, per their own privacy policies.
+- **Email/SMS notifications** — used internally to notify the application administrator of new sign-ups/logins, for security monitoring. This does not involve sharing your data with advertisers or unrelated third parties.
+        """
+    )
+
+    st.subheader("5. Cookies & Session Data")
+    st.markdown(
+        """
+This app uses standard session mechanisms to keep you logged in while
+you use it. We do not use third-party advertising or tracking cookies.
+        """
+    )
+
+    st.subheader("6. Data Retention & Deletion")
+    st.markdown(
+        """
+We retain your account information for as long as your account is
+active. To request that your account and associated data be deleted,
+contact us using the details below.
+        """
+    )
+
+    st.subheader("7. Your Rights")
+    st.markdown(
+        """
+You can request to access, correct, or delete the personal information
+we hold about you at any time by contacting us.
+        """
+    )
+
+    st.subheader("8. Children's Privacy")
+    st.markdown(
+        """
+This application is not directed at children under 13, and we do not
+knowingly collect personal information from children.
+        """
+    )
+
+    st.subheader("9. Changes to This Policy")
+    st.markdown(
+        """
+We may update this Privacy Policy from time to time. Continued use of
+the application after changes are posted constitutes acceptance of the
+updated policy.
+        """
+    )
+
+    st.subheader("10. Contact Us")
+    st.markdown(
+        """
+If you have any questions about this Privacy Policy or your data,
+contact us at **punitkr.786@gmail.com**.
+        """
+    )
+
+    render_footer()
+
+
 # =====================================================
 # SIDEBAR
 # =====================================================
 
-def render_sidebar() -> None:
+def render_sidebar(privacy_page) -> None:
     """Render sidebar branding/status. Page links themselves are handled
     by st.navigation() in main(), based on login state."""
 
@@ -741,6 +853,7 @@ def render_sidebar() -> None:
 
         st.markdown("---")
         st.subheader("Application")
+        st.page_link(privacy_page, label="Privacy Policy", icon="🔒")
         st.write(f"Version : {APP_VERSION}")
         st.write("Environment : Production")
 
@@ -839,7 +952,11 @@ def main() -> None:
         st.stop()
 
     _complete_oauth_callback()
-    render_sidebar()
+
+    privacy_page = st.Page(
+        render_privacy_policy_page, title="Privacy Policy", icon="🔒", url_path="privacy-policy"
+    )
+    render_sidebar(privacy_page)
 
     if st.session_state.get("auth_user"):
         pages = [
@@ -850,10 +967,12 @@ def main() -> None:
             st.Page("pages/4_AI_Insights.py", title="AI Insights", icon="🧠"),
             st.Page("pages/5_Dashboard.py", title="Dashboard", icon="📊"),
             st.Page("pages/6_Reports.py", title="Reports", icon="📄"),
+            privacy_page,
         ]
     else:
         pages = [
             st.Page(render_logged_out_home, title="Home", icon="🏠", default=True),
+            privacy_page,
         ]
 
     navigation = st.navigation(pages, position="sidebar")
