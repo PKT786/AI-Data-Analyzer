@@ -42,6 +42,13 @@ auth.render_account_bar()
 # Premium Dashboard Page
 # ==========================================================
 
+def _need(data, label):
+    """Fail loudly (instead of handing the user an empty file)."""
+    if not data:
+        raise RuntimeError(f"Could not build the {label} file. Check that the 'kaleido==0.2.1' and 'plotly<6.1' packages are installed.")
+    return data
+
+
 class PremiumDashboardPage:
 
     def __init__(self):
@@ -328,41 +335,41 @@ class PremiumDashboardPage:
     # ======================================================
 
     def render_export(self):
-        st.sidebar.subheader("⬇️ Export Dashboard")
+        """Prominent, one-click downloads in the main area. Each button
+        builds its file only when clicked (callable data), so the page
+        stays fast and the buttons never disappear after a click."""
         dashboard = self.dashboard
+        ex = self.exporter
 
-        fmt = st.sidebar.selectbox("Format", ["HTML", "PNG", "Excel", "PowerPoint", "PDF"], key="export_fmt")
+        st.markdown("### ⬇️ Download Dashboard")
 
-        if st.sidebar.button("Prepare Download", use_container_width=True):
-            with st.spinner(f"Exporting {fmt}..."):
-                file_bytes, filename, mime = None, None, None
+        formats = [
+            ("🌐 HTML", "dashboard.html", "text/html",
+             lambda: ex.export_html(dashboard).encode("utf-8")),
+            ("🖼️ PNG", "dashboard.png", "image/png",
+             lambda: _need(ex.export_png(dashboard), "PNG")),
+            ("📕 PDF", "dashboard.pdf", "application/pdf",
+             lambda: _need(ex.export_pdf(dashboard), "PDF")),
+            ("📊 PowerPoint", "dashboard.pptx",
+             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+             lambda: _need(ex.export_powerpoint(dashboard), "PowerPoint")),
+            ("📗 Excel", "dashboard.xlsx",
+             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+             lambda: _need(ex.export_excel(dashboard), "Excel")),
+        ]
 
-                if fmt == "HTML":
-                    html = self.exporter.export_html(dashboard)
-                    file_bytes, filename, mime = html.encode("utf-8"), "dashboard.html", "text/html"
-                elif fmt == "PNG":
-                    file_bytes = self.exporter.export_png(dashboard)
-                    filename, mime = "dashboard.png", "image/png"
-                elif fmt == "Excel":
-                    file_bytes = self.exporter.export_excel(dashboard)
-                    filename, mime = "dashboard.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                elif fmt == "PowerPoint":
-                    file_bytes = self.exporter.export_powerpoint(dashboard)
-                    filename, mime = "dashboard.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                elif fmt == "PDF":
-                    file_bytes = self.exporter.export_pdf(dashboard)
-                    filename, mime = "dashboard.pdf", "application/pdf"
-
-                if file_bytes:
-                    st.sidebar.download_button(
-                        "📥 Download",
-                        data=file_bytes,
-                        file_name=filename,
-                        mime=mime,
-                        use_container_width=True,
-                    )
-                else:
-                    st.sidebar.error("Export failed. Check the logs for details.")
+        cols = st.columns(len(formats))
+        for col, (label, filename, mime, builder) in zip(cols, formats):
+            with col:
+                st.download_button(
+                    label,
+                    data=builder,
+                    file_name=filename,
+                    mime=mime,
+                    key=f"dl_{filename}",
+                    use_container_width=True,
+                )
+        st.caption("Files are generated the moment you click a button.")
 
     # ======================================================
     # Render
@@ -376,12 +383,12 @@ class PremiumDashboardPage:
         self.inject_theme_css()
         self.render_header()
         self.render_kpis()
+        self.render_export()
         self.render_summary()
 
         filtered_df = self.render_filters()
         self.render_theme_controls()
         self.render_add_chart(filtered_df)
-        self.render_export()
 
         st.divider()
         self.render_widgets()
