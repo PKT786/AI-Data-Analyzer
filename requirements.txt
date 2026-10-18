@@ -4,7 +4,7 @@ numpy
 openpyxl
 xlsxwriter
 pyarrow
-plotly
+plotly>=5.22,<6.1
 matplotlib
 python-dateutil
 pytz
