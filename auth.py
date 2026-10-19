@@ -55,7 +55,6 @@ import logging
 import os
 import re
 import smtplib
-import sqlite3
 import ssl
 import time
 import uuid
@@ -66,9 +65,11 @@ import requests
 import streamlit as st
 import streamlit.components.v1 as components
 
+import db
+
 logger = logging.getLogger(__name__)
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "data", "users.db")
+DB_PATH = db.SQLITE_PATH  # local-file fallback location (see db.py)
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -80,24 +81,9 @@ APP_LABEL = "AI Data Analyzer Pro"
 # ================================================================== DB =====
 
 def _get_conn():
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS users (
-            id            TEXT PRIMARY KEY,
-            name          TEXT NOT NULL,
-            email         TEXT NOT NULL UNIQUE,
-            mobile        TEXT,
-            password_hash TEXT,
-            auth_provider TEXT NOT NULL DEFAULT 'local',
-            created_at    REAL NOT NULL,
-            last_login_at REAL
-        )
-        """
-    )
-    conn.commit()
-    return conn
+    """Open the user database (permanent PostgreSQL if configured in
+    secrets, otherwise a local SQLite file). See db.py / SETUP_DATABASE.md."""
+    return db.get_conn()
 
 
 def _normalize_email(email: str) -> str:
@@ -108,13 +94,14 @@ def find_user_by_email(email: str) -> dict | None:
     email = _normalize_email(email)
     with closing(_get_conn()) as conn:
         row = conn.execute(
-            "SELECT id, name, email, mobile, password_hash, auth_provider, created_at, last_login_at "
-            "FROM users WHERE email = ?",
+            "SELECT id, name, email, mobile, password_hash, auth_provider, created_at, last_login_at, "
+            "dashboard_credits_remaining FROM users WHERE email = ?",
             (email,),
         ).fetchone()
     if not row:
         return None
-    keys = ["id", "name", "email", "mobile", "password_hash", "auth_provider", "created_at", "last_login_at"]
+    keys = ["id", "name", "email", "mobile", "password_hash", "auth_provider", "created_at", "last_login_at",
+            "dashboard_credits_remaining"]
     return dict(zip(keys, row))
 
 
@@ -155,6 +142,14 @@ def validate_signup(name: str, email: str, mobile: str, password: str) -> str | 
 # ============================================================== SIGN UP ====
 
 def signup_user(name: str, email: str, mobile: str, password: str) -> tuple[bool, str]:
+    try:
+        return _signup_user(name, email, mobile, password)
+    except RuntimeError as ex:  # storage unreachable (see db.py)
+        logger.error("Signup failed: %s", ex)
+        return False, "We couldn't save your account right now. Please try again shortly."
+
+
+def _signup_user(name: str, email: str, mobile: str, password: str) -> tuple[bool, str]:
     """
     Create a new local account.
     Returns (success, message). If the email already exists, success is
@@ -186,6 +181,14 @@ def signup_user(name: str, email: str, mobile: str, password: str) -> tuple[bool
 # ================================================================ LOG IN ====
 
 def login_user(email: str, password: str) -> tuple[bool, str, dict | None]:
+    try:
+        return _login_user(email, password)
+    except RuntimeError as ex:  # storage unreachable (see db.py)
+        logger.error("Login failed: %s", ex)
+        return False, "We couldn't reach the account database right now. Please try again shortly.", None
+
+
+def _login_user(email: str, password: str) -> tuple[bool, str, dict | None]:
     """Returns (success, message, user_dict_or_None)."""
     email = _normalize_email(email)
     if not email or not password:
@@ -290,6 +293,19 @@ def render_oauth_diagnostics() -> None:
     no secret values are ever displayed, only True/False per key."""
 
     with st.expander("⚙️ Login provider setup status (for admin)"):
+        st.markdown("**User account storage**")
+        if db.is_persistent():
+            try:
+                db.get_conn().close()
+                st.success("PostgreSQL database connected - accounts are saved permanently.")
+            except RuntimeError as ex:
+                st.error(str(ex))
+        else:
+            st.warning(
+                "Accounts are stored in a temporary local file. On Streamlit Cloud this is "
+                "erased on every restart, so users would have to sign up again. "
+                "Add a [database] url to your secrets - see SETUP_DATABASE.md."
+            )
         diag = oauth_diagnostics()
 
         if not diag.get("secrets_loaded"):
