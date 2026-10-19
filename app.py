@@ -205,9 +205,12 @@ def _complete_oauth_callback() -> None:
     st.query_params.clear()
 
     if profile and profile.get("email"):
-        user = auth.login_or_signup_via_social(profile["name"], profile["email"], provider=state)
-        st.session_state["auth_user"] = user
-        st.session_state["auth_flash"] = f"Signed in with {state.title()} as {profile['email']}."
+        try:
+            user = auth.login_or_signup_via_social(profile["name"], profile["email"], provider=state)
+            st.session_state["auth_user"] = user
+            st.session_state["auth_flash"] = f"Signed in with {state.title()} as {profile['email']}."
+        except RuntimeError:
+            st.session_state["auth_error"] = "We couldn't reach the account database right now. Please try again shortly."
     else:
         st.session_state["auth_error"] = f"{state.title()} sign-in failed or was cancelled. Please try again."
 
